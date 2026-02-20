@@ -10,7 +10,7 @@ The agent learns from every session automatically — no commands, no manual sav
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Bun](https://img.shields.io/badge/Bun-Runtime-FBF0DF?style=for-the-badge&logo=bun&logoColor=black)](https://bun.sh/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -21,6 +21,12 @@ The agent learns from every session automatically — no commands, no manual sav
 [![Voyage AI](https://img.shields.io/badge/Voyage_AI-Code_Embeddings-5B6BF5?style=for-the-badge)](https://www.voyageai.com/)
 [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-100%25_Local-22C55E?style=for-the-badge&logo=homeassistant&logoColor=white)](https://github.com/prosperitypirate/opencode-memory)
 [![OpenCode Plugin](https://img.shields.io/badge/OpenCode-Plugin-FF6B35?style=for-the-badge)](https://opencode.ai)
+
+</div>
+
+<div align="center">
+
+![opencode-memory dashboard](.github/assets/dashboard.png)
 
 </div>
 
@@ -274,7 +280,7 @@ Pricing: **$0.18/M tokens** with a generous free tier.
 ```
 opencode-memory/
 ├── plugin/       TypeScript · Bun — OpenCode plugin (hooks + memory tool)
-├── backend/      Python 3.12 · FastAPI · LanceDB — memory API server
+├── backend/      Python 3.13 · FastAPI · LanceDB — memory API server
 │   └── app/
 │       ├── main.py        app, lifespan, router wiring
 │       ├── config.py      env vars, model names, pricing
