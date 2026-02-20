@@ -33,16 +33,16 @@ updates:
       - "dependencies"
       - "frontend"
 
-  # GitHub Actions — uncomment once CI workflows exist in .github/workflows/
-  # - package-ecosystem: "github-actions"
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #     day: "monday"
-  #   open-pull-requests-limit: 5
-  #   labels:
-  #     - "dependencies"
-  #     - "ci"
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
 
   # Docker
   - package-ecosystem: "docker"
