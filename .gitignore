@@ -14,8 +14,6 @@ dist/
 # Logs
 *.log
 
-# Lock files (using bun)
-bun.lock
 
 # OS files
 .DS_Store
