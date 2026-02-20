@@ -109,7 +109,15 @@ export function formatContextForPrompt(
     allSemantic.forEach((mem) => {
       const pct = Math.round(mem.similarity * 100);
       const content = mem.memory || mem.chunk || "";
-      if (content) parts.push(`- [${pct}%] ${content}`);
+      if (!content) return;
+      parts.push(`- [${pct}%] ${content}`);
+      // Append a truncated source snippet so Claude can read exact values
+      // (config numbers, error messages, function names) not present in the summary.
+      const snippet = mem.chunk?.trim();
+      if (snippet && snippet !== content) {
+        const truncated = snippet.length > 400 ? snippet.slice(0, 400) + "…" : snippet;
+        parts.push(`  > ${truncated.replace(/\n/g, "\n  > ")}`);
+      }
     });
   }
 
