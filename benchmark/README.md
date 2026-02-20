@@ -6,11 +6,24 @@ Unlike general benchmarks (LongMemEval, LoCoMo), this dataset is designed around
 
 ---
 
-## Baseline Results — Run `ab3bff99`
+## Results
 
-> Model: `claude-sonnet-4-6` (judge + answerer) · Backend: opencode-memory v0.1 · 40 questions · 10 sessions
+> Model: `claude-sonnet-4-6` (judge + answerer) · 40 questions · 10 sessions
 
-### Overall: 52.5% (21/40)
+### v0.2 — Hybrid Search (run `e2052c0f`) — **85.0%** ↑ +32.5pp
+
+```
+tech-stack        ████████████████████ 100%  (5/5)  ✓
+architecture      ████████████████████ 100%  (5/5)  ✓
+preference        ████████████████████ 100%  (5/5)  ✓
+error-solution    ████████████████████ 100%  (5/5)  ✓  was 0%  → +100pp
+knowledge-update  ████████████████████ 100%  (5/5)  ✓  was 40% → +60pp
+abstention        ████████████████░░░░  80%  (4/5)  ✓
+cross-synthesis   ████████████░░░░░░░░  60%  (3/5)  ⚠  was 20% → +40pp
+session-cont.     ████████░░░░░░░░░░░░  40%  (2/5)  ⚠  was 20% → +20pp
+```
+
+### v0.1 — Baseline (run `ab3bff99`) — **52.5%**
 
 ```
 preference        ████████████████████ 100%  (5/5)  ✓
