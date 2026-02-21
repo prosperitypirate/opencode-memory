@@ -201,49 +201,75 @@ Remaining session-continuity gap (40%) is split between a dataset inconsistency 
 
 ---
 
-## Setup
+## Running locally
 
-**Requirements:** [Bun](https://bun.sh) ≥ 1.0, opencode-memory backend running, Anthropic or OpenAI API key.
+### Prerequisites
+
+- [Bun](https://bun.sh) ≥ 1.0
+- opencode-memory backend + frontend running via Docker Compose (see root README)
+- An Anthropic API key (Claude is used for both answering and judging)
+
+### First-time setup
 
 ```bash
+# 1. Start the backend (from repo root)
+docker compose up -d
+
+# 2. Install benchmark dependencies
 cd benchmark
 bun install
+
+# 3. Configure environment
 cp .env.example .env.local
-# fill in MEMORY_BACKEND_URL and ANTHROPIC_API_KEY
+# Edit .env.local and set:
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   MEMORY_BACKEND_URL=http://localhost:8020   ← default, change only if needed
 ```
 
-## Usage
+### Running the benchmark
 
 ```bash
-bun run bench run                   # full pipeline (~5 min)
-bun run bench run -r my-run         # named run (resumes if interrupted)
-bun run bench run --no-cleanup      # keep memories for debugging
-bun run bench run --limit 10        # quick smoke test (10 questions)
-bun run bench status -r <id>        # check progress
-bun run bench serve -r <id>         # dashboard at http://localhost:4242
-bun run bench list                  # list all runs
+bun run bench run
 ```
 
-## Pipeline
+That's it. Every run automatically:
+1. **Opens the live dashboard** at `http://localhost:4242` in your browser
+2. Streams live progress through Ingest → Search → Answer → Evaluate phases
+3. Prints the final score table in the terminal
+4. Cleans up test memories from the backend when done (~5 min total)
+
+### Other commands
+
+```bash
+bun run bench run -r my-run         # named run — safe to interrupt and resume
+bun run bench run --no-cleanup      # keep memories in backend after run (for debugging)
+bun run bench run --limit 10        # smoke test — runs only the first 10 questions (~1 min)
+bun run bench serve -r <id>         # re-open the dashboard for a completed run
+bun run bench status -r <id>        # print checkpoint status for a run
+bun run bench list                  # list all past runs with scores
+```
+
+### Pipeline
 
 ```
-ingest    → POST sessions to backend (isolated by runTag)
-search    → semantic search per question, save top-8 results
-answer    → LLM generates answer from search results only
+ingest    → POST sessions to backend (isolated by runTag — real memories never touched)
+search    → semantic search per question, saves top-8 results
+answer    → LLM generates answer from retrieved context only
 evaluate  → LLM-as-judge: correct (1) or incorrect (0) vs ground truth
 report    → aggregate by category, print table, save report.json
+cleanup   → delete all test memories for this run
 ```
 
-Checkpointed after each phase — safe to interrupt and resume with `-r`.
+Checkpointed after each phase — if interrupted, re-run the same command with `-r <id>` to resume from where it left off.
 
-## Environment variables
+### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `MEMORY_BACKEND_URL` | `http://localhost:8020` | Backend URL |
-| `ANTHROPIC_API_KEY` | — | Required if using Anthropic |
-| `OPENAI_API_KEY` | — | Required if using OpenAI |
-| `JUDGE_MODEL` | `claude-sonnet-4-6` | Override judge |
-| `ANSWERING_MODEL` | `claude-sonnet-4-6` | Override answerer |
+| `ANTHROPIC_API_KEY` | — | Required (Claude judge + answerer) |
+| `OPENAI_API_KEY` | — | Alternative if using OpenAI models |
+| `JUDGE_MODEL` | `claude-sonnet-4-6` | Override judge model |
+| `ANSWERING_MODEL` | `claude-sonnet-4-6` | Override answering model |
 
-Output goes to `data/runs/<run-id>/` (gitignored).
+Run output is saved to `data/runs/<run-id>/` (gitignored).
