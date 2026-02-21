@@ -72,8 +72,8 @@
   {
     "questionId": "Q11",
     "questionType": "session-continuity",
-    "question": "What was the most recent session focused on?",
-    "groundTruth": "Fixing the Stripe webhook signature validation failure. The bug was that Starlette had consumed the request body before Stripe's construct_event() could read the raw bytes. Fixed by reading and caching raw_body = await request.body() before any parsing.",
+    "question": "The Stripe webhook is throwing signature errors in production — can you remind me what was causing the validation failure and exactly how we fixed it?",
+    "groundTruth": "Starlette consumed the request body before Stripe's construct_event() could read the raw bytes. Fix: read and cache raw_body = await request.body() first, then pass those raw bytes (not decoded string) to stripe.Webhook.construct_event().",
     "haystackSessionIds": ["S09"]
   },
   {
@@ -93,15 +93,15 @@
   {
     "questionId": "Q14",
     "questionType": "session-continuity",
-    "question": "What did the session on January 17 cover?",
-    "groundTruth": "Development setup: how to run the server (uvicorn), run migrations (alembic upgrade head at the time), run tests (pytest), and the required environment variables (DATABASE_URL, REDIS_URL, JWT_SECRET, STRIPE_SECRET_KEY).",
+    "question": "Can you remind me the commands to run this project locally — how do I start the server, run migrations, and run the tests?",
+    "groundTruth": "Start server: uvicorn app.main:app --reload --port 8000. Run migrations: aerich upgrade. Run tests: pytest tests/ -v. Required env vars: DATABASE_URL, REDIS_URL, JWT_SECRET, STRIPE_SECRET_KEY.",
     "haystackSessionIds": ["S03"]
   },
   {
     "questionId": "Q15",
     "questionType": "session-continuity",
-    "question": "What session directly preceded the Stripe webhook bug fix session?",
-    "groundTruth": "The Stripe integration session (January 28) where the POST /webhooks/stripe endpoint was implemented and the checkout flow was described.",
+    "question": "How does the Stripe checkout flow work end to end — from the user clicking pay to the order being marked as paid?",
+    "groundTruth": "POST /checkout creates a Stripe PaymentIntent and returns client_secret to the frontend. Frontend uses Stripe.js to confirm payment. On success Stripe calls POST /webhooks/stripe, which validates the Stripe-Signature header using stripe.Webhook.construct_event() and handles payment_intent.succeeded to mark the order as paid.",
     "haystackSessionIds": ["S08", "S09"]
   },
   {
@@ -565,141 +565,141 @@
   {
     "questionId": "Q81",
     "questionType": "session-continuity",
-    "question": "What was session S11 focused on?",
+    "question": "Can you remind me how the product catalog endpoints are structured — what filtering does GET /products support and which endpoints require admin?",
     "groundTruth": "Product catalog CRUD: GET /products with filtering (category, min_price, max_price, search), GET /products/{id}, admin-only POST/PUT/DELETE, soft delete via is_active=False, and Pydantic schemas ProductCreate/ProductUpdate/ProductResponse.",
     "haystackSessionIds": ["S11"]
   },
   {
     "questionId": "Q82",
     "questionType": "session-continuity",
-    "question": "What was session S12 focused on?",
+    "question": "Someone's cart isn't persisting between sessions — can you remind me how cart data is stored in Redis and what the expiry is?",
     "groundTruth": "Shopping cart implementation: Redis hash with key cart:{user_id}, 7-day TTL, and POST/PUT/DELETE/GET cart endpoints with stock check on add.",
     "haystackSessionIds": ["S12"]
   },
   {
     "questionId": "Q83",
     "questionType": "session-continuity",
-    "question": "What was session S13 focused on?",
+    "question": "Walk me through exactly what POST /orders does step by step, and what's the full order status lifecycle?",
     "groundTruth": "Order system: Order model with JSONB items snapshot, status lifecycle (pending→paid→shipped→delivered, cancellable at any stage), and POST /orders flow (read cart → validate stock → create record → deduct stock → clear cart).",
     "haystackSessionIds": ["S13"]
   },
   {
     "questionId": "Q84",
     "questionType": "session-continuity",
-    "question": "What was session S14 focused on?",
+    "question": "How are order confirmation emails sent — does the email send block the API response or not?",
     "groundTruth": "Background tasks for order emails: asyncio.create_task(send_order_confirmation(...)) fire-and-forget pattern using SendGrid API, with email failure logged but not blocking the order response.",
     "haystackSessionIds": ["S14"]
   },
   {
     "questionId": "Q85",
     "questionType": "session-continuity",
-    "question": "What was session S15 focused on?",
+    "question": "I need to set up the test environment from scratch — what libraries do we use, what fixtures exist, and what's the coverage target?",
     "groundTruth": "Testing setup: pytest + pytest-asyncio, fixtures (test_db, test_client, auth_headers), fakeredis for Redis mocking, factory_boy for test data, tests/ directory with one file per module, and 80% coverage target.",
     "haystackSessionIds": ["S15"]
   },
   {
     "questionId": "Q86",
     "questionType": "session-continuity",
-    "question": "What was session S16 focused on?",
+    "question": "Product queries were running at 2 seconds — can you remind me what we diagnosed and what we did to fix it?",
     "groundTruth": "Performance optimization: EXPLAIN ANALYZE revealed a sequential scan on product queries. Added idx_products_category (single) and idx_products_category_price (composite) indexes, reducing query time from 2.3s to 45ms.",
     "haystackSessionIds": ["S16"]
   },
   {
     "questionId": "Q87",
     "questionType": "session-continuity",
-    "question": "What was session S17 focused on?",
+    "question": "Can you remind me the rate limits configured on the API and how enforcement stays consistent when running multiple uvicorn workers?",
     "groundTruth": "Rate limiting with slowapi: 100 req/min per IP (general), 10 req/min per IP (auth endpoints), Redis backend, X-RateLimit-* headers, and 429 + Retry-After on exceeding the limit.",
     "haystackSessionIds": ["S17"]
   },
   {
     "questionId": "Q88",
     "questionType": "session-continuity",
-    "question": "What was session S18 focused on?",
+    "question": "How does the request_id get generated and threaded through the system — how does it end up in every log entry?",
     "groundTruth": "Structured logging with structlog: UUID request_id per request via contextvars middleware, log fields (request_id, user_id, endpoint, duration_ms, status_code), structlog.exception() for tracebacks, LOG_LEVEL env var, JSON output in production.",
     "haystackSessionIds": ["S18"]
   },
   {
     "questionId": "Q89",
     "questionType": "session-continuity",
-    "question": "What was session S19 focused on?",
+    "question": "What's our API versioning strategy and when exactly are the deprecated unversioned routes being shut off?",
     "groundTruth": "API versioning: /api/v1/ prefix on all routes, old routes kept with Deprecation: true header for a 30-day window (removal March 5), and v2 pagination redesign plan.",
     "haystackSessionIds": ["S19"]
   },
   {
     "questionId": "Q90",
     "questionType": "session-continuity",
-    "question": "What was session S20 focused on?",
+    "question": "I need to deploy a hotfix to production without downtime — what's the command and how does the nginx and Docker setup work?",
     "groundTruth": "Production deployment: multi-stage Dockerfile (1.2GB→340MB), GET /health endpoint, nginx reverse proxy with SSL, and zero-downtime rolling restart via docker compose.",
     "haystackSessionIds": ["S20"]
   },
   {
     "questionId": "Q91",
     "questionType": "session-continuity",
-    "question": "What was session S21 focused on?",
+    "question": "What charts did we add to the dashboard and what data does each one display?",
     "groundTruth": "Dashboard charts with Recharts: AreaChart (revenue), BarChart (orders by category), PieChart (payment status), 5-minute auto-refresh, and analytics API endpoints on the ecommerce-api.",
     "haystackSessionIds": ["S21"]
   },
   {
     "questionId": "Q92",
     "questionType": "session-continuity",
-    "question": "What was session S22 focused on?",
+    "question": "Multiple components are making duplicate API calls for the same endpoint — can you remind me the SWR config we set up to prevent that?",
     "groundTruth": "Dashboard data fetching: SWR with dedupingInterval:30s and revalidateOnFocus:false for analytics, Next.js Server Components for initial render, and API routes in app/api/ proxying to the ecommerce-api.",
     "haystackSessionIds": ["S22"]
   },
   {
     "questionId": "Q93",
     "questionType": "session-continuity",
-    "question": "What was session S23 focused on?",
+    "question": "The revenue chart is grouping events on the wrong dates — can you remind me what causes that and exactly how the fix works?",
     "groundTruth": "Timezone bug fix: UTC timestamps from PostgreSQL shifted to local time via new Date(), causing wrong chart date grouping. Fixed with date-fns-tz library, formatChartDate() using utcToZonedTime() + format(), with timezone from Intl.DateTimeFormat().resolvedOptions().timeZone.",
     "haystackSessionIds": ["S23"]
   },
   {
     "questionId": "Q94",
     "questionType": "session-continuity",
-    "question": "What was session S24 focused on?",
+    "question": "Can you remind me my preferences around React component style — default vs named exports, class vs functional, and how I handle errors in catch blocks?",
     "groundTruth": "Developer preferences: named exports for React components, Zod for TypeScript validation, log before re-throw (never swallow errors), functional components only (no class components), @faker-js/faker for TypeScript test data.",
     "haystackSessionIds": ["S24"]
   },
   {
     "questionId": "Q95",
     "questionType": "session-continuity",
-    "question": "What was session S25 focused on?",
+    "question": "Where do both projects stand right now — what's fully shipped and what's still pending before we can launch?",
     "groundTruth": "Final status review: ecommerce-api fully complete (auth, catalog, cart, orders, Stripe, email, rate limiting, logging, versioning, deployment). dashboard-app: charts and SWR fetching complete, pending NextAuth.js auth and admin views. Critical path: NextAuth.js + load testing.",
     "haystackSessionIds": ["S25"]
   },
   {
     "questionId": "Q96",
     "questionType": "session-continuity",
-    "question": "Which session introduced the SendGrid email integration?",
-    "groundTruth": "S14 (January 24) — introduced asyncio.create_task for fire-and-forget order confirmation emails via SendGrid.",
+    "question": "If the SendGrid email fails after an order is created, does that error back to the user or is it handled silently?",
+    "groundTruth": "Email failure is logged but does not block or error the order response — emails are sent fire-and-forget via asyncio.create_task. The order is already committed to the database before the email task is created.",
     "haystackSessionIds": ["S14"]
   },
   {
     "questionId": "Q97",
     "questionType": "session-continuity",
-    "question": "Which session introduced structlog to the project?",
-    "groundTruth": "S18 (February 2) — added structlog with request_id middleware, structured log fields, and LOG_LEVEL env var.",
+    "question": "Can you remind me the exact fields that get attached to every log entry from the structlog setup?",
+    "groundTruth": "Every log entry includes: request_id (UUID generated per request), user_id, endpoint, duration_ms, and status_code. structlog.exception() is used for tracebacks. LOG_LEVEL env var controls verbosity (default INFO), JSON renderer in production.",
     "haystackSessionIds": ["S18"]
   },
   {
     "questionId": "Q98",
     "questionType": "session-continuity",
-    "question": "What was the most recent ecommerce-api session and what did it cover?",
-    "groundTruth": "S25 (February 10) — a final status review confirming the ecommerce-api is fully complete and the dashboard-app is pending NextAuth.js.",
+    "question": "What's left before we can launch — what's still pending across both projects?",
+    "groundTruth": "ecommerce-api is fully complete. dashboard-app pending: NextAuth.js authentication and admin views. Critical path to launch: NextAuth.js integration plus load testing.",
     "haystackSessionIds": ["S25"]
   },
   {
     "questionId": "Q99",
     "questionType": "session-continuity",
-    "question": "What session directly preceded the performance optimization session?",
-    "groundTruth": "S15 (January 26) — the testing setup session, which preceded S16 (January 27) where EXPLAIN ANALYZE and indexes were added.",
-    "haystackSessionIds": ["S15", "S16"]
+    "question": "We're wiring up CI — can you remind me the exact pytest command we use including the coverage enforcement flag?",
+    "groundTruth": "pytest tests/ -v --cov=app --cov-fail-under=80",
+    "haystackSessionIds": ["S15"]
   },
   {
     "questionId": "Q100",
     "questionType": "session-continuity",
-    "question": "Which session first mentioned the dashboard-app project?",
-    "groundTruth": "S10 (February 5) — the first dashboard-app session, setting up Next.js 15, Prisma, PostgreSQL, Tailwind CSS with shadcn/ui, and bun.",
+    "question": "Can you remind me the initial tech stack decisions for the dashboard-app — framework, database, UI components, and package manager?",
+    "groundTruth": "Next.js 15 with App Router, separate PostgreSQL instance, Prisma for database access, Tailwind CSS with shadcn/ui components, bun as the package manager for all installs and builds.",
     "haystackSessionIds": ["S10"]
   },
 
