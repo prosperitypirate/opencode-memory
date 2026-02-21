@@ -132,7 +132,7 @@ export const HTML = /* html */ `<!DOCTYPE html>
       <div id="cats"></div>
       <div>
         <div class="sidebar-title">Connection</div>
-        <div class="conn-status"><div class="conn-dot connecting" id="conn-dot"></div><span id="conn-text">Connecting…</span></div>
+        <div class="conn-status" id="conn-status"><div class="conn-dot connecting" id="conn-dot"></div><span id="conn-text">Connecting…</span></div>
       </div>
     </div>
   </div>
@@ -270,10 +270,12 @@ function handle(ev) {
           es.close();
           badgeLive.textContent = "done";
           badgeLive.className = "badge green";
-          // Replace the connection status block with a clear completion notice
-          document.querySelector(".conn-status").innerHTML =
-            \`<span style="color:var(--green)">✓</span>
-             <span style="color:var(--text)">Benchmark complete — you can close this tab</span>\`;
+          const status = document.getElementById("conn-status");
+          if (status) {
+            status.style.background = "#0f2b17";
+            status.style.borderColor = "#1a4025";
+            status.innerHTML = \`<span style="color:var(--green);font-size:13px">✓</span><span style="color:var(--green)">Benchmark complete — you can close this tab</span>\`;
+          }
         }, 400);
       }
       break;
