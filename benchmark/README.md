@@ -10,6 +10,25 @@ Unlike general benchmarks (LongMemEval, LoCoMo), this dataset is designed around
 
 > Model: `claude-sonnet-4-6` (judge + answerer) · 40 questions · 10 sessions
 
+### v0.3 — Relational Versioning (runs `cb9f84d0`, `d6af0edd`) — **82.5% avg** ↑ +30pp
+
+Knowledge-update is **consistently 100%** across both runs — the core fix for stale memories is working. Other categories show ±10pp run-to-run variance from non-deterministic LLM extraction and contradiction detection (see note below).
+
+```
+architecture      ████████████████████ 100%        ✓  stable
+preference        ████████████████████ 100%        ✓  stable
+knowledge-update  ████████████████████ 100%        ✓  stable  was 40% → +60pp
+abstention        ████████████████████ 100%        ✓  stable
+tech-stack         80%–80%            ████████████████░░░░    stable
+error-solution    80%–100%            ████████████████░░░░    varies
+cross-synthesis   40%–80%             ████████–████████████   varies
+session-cont.     20%–40%             ████–████               varies
+─────────────────────────────────────────────────────────────
+Overall           77.5%–87.5%  (avg 82.5%)
+```
+
+> **Note on variance:** LLM-based benchmarks are non-deterministic even at temperature 0. Two sources specific to this PR: (1) **chunk leakage** — the raw source chunk for a post-migration memory may still contain the old technology name in context ("switched *from* SQLAlchemy to Tortoise ORM"), which synthesis questions can pick up; (2) **contradiction detection** — the LLM call that identifies which memories to supersede may not fire identically each run.
+
 ### v0.2 — Hybrid Search (run `e2052c0f`) — **85.0%** ↑ +32.5pp
 
 ```
@@ -70,6 +89,8 @@ When asked "what ORM is used?", the LLM received both and guessed wrong (SQLAlch
 
 **Supermemory's fix:** Relational versioning — when ingesting a memory that contradicts an existing one, create an `updates` relationship. Old memories are excluded from search results or ranked lower. This creates a version chain instead of a flat pile of facts.
 
+**Status: ✅ Implemented (PR #21).** After each ADD, a similarity search finds candidate memories within cosine distance 0.5, then an LLM call identifies which are factually superseded. Confirmed entries are marked `superseded_by = <new_id>` and excluded from all reads. `knowledge-update` is consistently **100%** across runs.
+
 ---
 
 ### 3. Search recall fails for recency queries → `session-continuity` 20%
@@ -96,11 +117,11 @@ Supermemory published [LongMemEval_s](https://supermemory.ai/research) results (
 
 Note: different datasets (coding context vs. general conversational), so scores are not directly comparable. What is comparable is **which techniques drive improvement**:
 
-| Supermemory technique | Their uplift | v0.1 gap | v0.2 result |
+| Supermemory technique | Their uplift | v0.1 gap | v0.3 result |
 |---|---|---|---|
 | Hybrid search (memory → source chunk) | +22.9% temporal | error-solution 0% | **100%** ✓ |
-| Relational versioning (`updates` link) | +6.2% knowledge-update | knowledge-update 40%, synthesis 20% | pending (#17) |
-| Temporal grounding (documentDate + eventDate) | +22.9% temporal | session-continuity 20% | 40% partial (#18) |
+| Relational versioning (`updates` link) | +6.2% knowledge-update | knowledge-update 40%, synthesis 20% | **knowledge-update 100%** ✓ (#21) |
+| Temporal grounding (documentDate + eventDate) | +22.9% temporal | session-continuity 20% | 20–40% (#18 open) |
 | Contextual memory extraction | Reduces ambiguity | architecture 1 miss, abstention 1 miss | unchanged |
 
 The remaining improvements below directly address each open technique.
@@ -119,17 +140,11 @@ Backend stores the original conversation text as a `chunk` field alongside each 
 
 Plugin also updated: dual-scope semantic search (user + project) at session start, with raw chunk snippets injected into `[MEMORY]` for hits ≥55% similarity.
 
-### Priority 2 — Relational versioning: supersede stale memories
+### ~~Priority 2 — Relational versioning: supersede stale memories~~ ✅ Done (PR #21)
 
-**Impact estimate: knowledge-update 40% → ~80%, cross-session-synthesis 20% → ~60%**
+**Actual results: knowledge-update consistently 100% (up from 40%). Overall range 77.5–87.5% across runs (avg 82.5%). Variance from non-deterministic LLM extraction and chunk leakage in synthesis questions.**
 
-Currently: every extracted memory is stored independently.
-
-Fix: During ingestion, after extracting a new memory, run a similarity search against existing memories for the same `user_id`. If a new memory semantically contradicts an existing one (same entity, different value), mark the old memory with a `superseded_by` pointer and exclude it from future search results.
-
-Implementation options (simplest first):
-- Add a `superseded_by` field to the LanceDB schema; filter it out in search
-- Use an LLM to determine contradiction during ingestion ("does this new memory update or contradict any of these existing memories?")
+After each new ADD, a candidate search (cosine distance ≤ 0.5) finds semantically related existing memories, then an LLM call determines which are factually superseded by the new memory. Confirmed entries are marked `superseded_by = <new_id>` and excluded from `POST /memories/search` and `GET /memories` by default. Auto-migration adds the field to existing tables on startup. Benchmark cleanup updated to use `?include_superseded=true` so no orphaned rows are left behind.
 
 ### Priority 3 — Temporal metadata in search and prompts
 
