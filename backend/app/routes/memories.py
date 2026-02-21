@@ -22,7 +22,7 @@ from ..config import DEDUP_DISTANCE, STRUCTURAL_DEDUP_DISTANCE, STRUCTURAL_TYPES
 from ..embedder import embed
 from ..extractor import extract_memories
 from ..models import AddMemoryRequest, SearchMemoryRequest
-from ..store import apply_aging_rules, find_duplicate
+from ..store import apply_aging_rules, check_and_supersede, find_duplicate
 
 logger = logging.getLogger("memory-server")
 router = APIRouter()
@@ -98,12 +98,23 @@ async def add_memory(req: AddMemoryRequest):
                     "updated_at":    now,
                     "hash":          fact_hash,
                     "chunk":         fact_chunk,
+                    "superseded_by": "",
                 }])
                 results.append({"id": mem_id, "memory": fact_text, "event": "ADD"})
                 logger.debug("Added new memory %s (type=%s)", mem_id, fact_type)
 
                 if fact_type:
                     await _in_thread(apply_aging_rules, req.user_id, fact_type, mem_id)
+
+                # Relational versioning: mark any contradicted existing memories as stale.
+                superseded = await _in_thread(
+                    check_and_supersede, req.user_id, fact_text, vector, mem_id, fact_type
+                )
+                if superseded:
+                    logger.info(
+                        "Versioning: new memory %s superseded %d existing: %s",
+                        mem_id, len(superseded), superseded,
+                    )
 
         return {"results": results}
 
@@ -116,8 +127,12 @@ async def add_memory(req: AddMemoryRequest):
 
 
 @router.get("/memories")
-async def list_memories(user_id: str, limit: int = 20):
-    """List stored memories for *user_id*, ordered by most recently updated."""
+async def list_memories(user_id: str, limit: int = 20, include_superseded: bool = False):
+    """List stored memories for *user_id*, ordered by most recently updated.
+
+    By default superseded memories (retired by relational versioning) are excluded.
+    Pass ``include_superseded=true`` to include them — needed for full cleanup passes.
+    """
     if db.table is None:
         raise HTTPException(status_code=503, detail="Memory server not initialised")
 
@@ -128,6 +143,10 @@ async def list_memories(user_id: str, limit: int = 20):
 
         df      = db.table.to_pandas()
         user_df = df[df["user_id"] == user_id].copy()
+
+        # Exclude superseded memories unless the caller explicitly requests them.
+        if "superseded_by" in user_df.columns and not include_superseded:
+            user_df = user_df[user_df["superseded_by"] == ""]
 
         if "updated_at" in user_df.columns:
             user_df = user_df.sort_values("updated_at", ascending=False)
@@ -169,7 +188,10 @@ async def search_memories(req: SearchMemoryRequest):
         rows = (
             db.table.search(query_vector, vector_column_name="vector")
             .metric("cosine")
-            .where(f"user_id = '{req.user_id}'", prefilter=True)
+            .where(
+                f"user_id = '{req.user_id}' AND superseded_by = ''",
+                prefilter=True,
+            )
             .limit(req.limit or 5)
             .to_list()
         )

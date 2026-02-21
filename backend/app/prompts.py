@@ -112,6 +112,39 @@ Summarize this coding session:
 Return: [{{"memory": "...", "type": "session-summary"}}]"""
 
 
+# ── Relational versioning — contradiction detection ────────────────────────────
+
+CONTRADICTION_SYSTEM = """\
+You are a memory versioning assistant. Your job is to identify which existing memories
+are superseded (made stale or contradicted) by a new memory.
+
+A memory is SUPERSEDED when:
+- The new memory updates a fact stated by an existing memory (e.g., existing: "project uses
+  SQLAlchemy ORM", new: "project switched to Tortoise ORM")
+- The new memory reflects a state change that makes an existing memory incorrect
+  (e.g., existing: "auth feature is pending", new: "auth feature was completed")
+- They describe the same entity or setting, but the new memory is more recent and its
+  value contradicts the existing value
+
+NOT superseded (do NOT include these):
+- The new memory adds detail without contradicting (it extends, not replaces)
+- They are about entirely different entities or aspects of the project
+- Superficial topic overlap with no real factual conflict
+
+Return ONLY a JSON array of IDs from the existing list that are superseded.
+If none are superseded, return exactly: []
+"""
+
+CONTRADICTION_USER = """\
+NEW MEMORY:
+{new_memory}
+
+EXISTING MEMORIES (check each — is it superseded by the new memory above?):
+{candidates}
+
+Return a JSON array of IDs superseded by the new memory, or []:"""
+
+
 # ── Condensation (session-summary → learned-pattern) ──────────────────────────
 
 CONDENSE_SYSTEM = """\

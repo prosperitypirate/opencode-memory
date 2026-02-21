@@ -25,6 +25,8 @@ from .config import (
 from .prompts import (
     CONDENSE_SYSTEM,
     CONDENSE_USER,
+    CONTRADICTION_SYSTEM,
+    CONTRADICTION_USER,
     EXTRACTION_SYSTEM,
     EXTRACTION_USER,
     INIT_EXTRACTION_SYSTEM,
@@ -185,6 +187,45 @@ def extract_memories(
     for fact in facts:
         fact["chunk"] = truncated
     return facts
+
+
+def detect_contradictions(new_memory: str, candidates: list[dict]) -> list[str]:
+    """Ask the LLM which candidate IDs are superseded by *new_memory*.
+
+    Returns a (possibly empty) list of memory IDs to mark as superseded.
+    Each candidate dict must have at least ``id`` and ``memory`` keys.
+    """
+    if not candidates:
+        return []
+    try:
+        candidates_text = "\n".join(
+            f"- ID: {c['id']} | {c['memory']}"
+            for c in candidates
+        )
+        raw = call_xai(
+            CONTRADICTION_SYSTEM,
+            CONTRADICTION_USER.format(
+                new_memory=new_memory,
+                candidates=candidates_text,
+            ),
+        )
+        if not raw:
+            return []
+        # Strip markdown fences if present
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            parts = stripped.split("```")
+            stripped = parts[1] if len(parts) > 1 else stripped
+            if stripped.startswith("json"):
+                stripped = stripped[4:]
+            stripped = stripped.strip()
+        parsed = json.loads(stripped)
+        if isinstance(parsed, list):
+            return [str(item) for item in parsed if isinstance(item, str) and item]
+        return []
+    except Exception as e:
+        logger.warning("detect_contradictions failed: %s", e)
+        return []
 
 
 def condense_to_learned_pattern(summary_text: str) -> Optional[dict]:
