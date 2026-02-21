@@ -59,7 +59,7 @@ export const HTML = /* html */ `<!DOCTYPE html>
   .row-icon    { font-size: 11px; margin-top: 1px; flex-shrink: 0; width: 14px; text-align: center; }
   .row-body    { flex: 1; min-width: 0; }
   .row-label   { color: var(--text); }
-  .row-sub     { color: var(--muted); font-size: 11px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .row-sub     { color: var(--muted); font-size: 11px; margin-top: 1px; line-height: 1.5; word-break: break-word; }
   .row-meta    { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; padding-left: 10px; }
   .correct     { color: var(--green); }
   .incorrect   { color: var(--red); }
@@ -222,6 +222,8 @@ function updateScore() {
 }
 
 // ── SSE ──────────────────────────────────────────────────────────────────
+let runDone = false;
+
 function connect() {
   const es = new EventSource("/events");
 
@@ -233,6 +235,7 @@ function connect() {
   };
 
   es.onerror = () => {
+    if (runDone) return;  // process exited cleanly after run — not a real error
     connDot.className = "conn-dot off";
     connTxt.textContent = "Disconnected — retrying…";
     badgeLive.textContent = "disconnected";
@@ -262,7 +265,7 @@ function handle(ev) {
       setPhase(ev.phase);
       appendPhaseRow(ev.phase.toUpperCase());
       if (ev.phase === "done") {
-        // Run is complete — stop reconnecting
+        runDone = true;
         setTimeout(() => {
           es.close();
           connDot.className = "conn-dot";
@@ -295,7 +298,7 @@ function handle(ev) {
       appendRow(
         "✦",
         ev.questionId,
-        ev.preview,
+        ev.preview + (ev.preview.length >= 100 ? "…" : ""),
         ev.done + "/" + ev.total
       );
       break;
@@ -314,7 +317,7 @@ function handle(ev) {
       appendRow(
         \`<span class="\${cls}">\${icon}</span>\`,
         \`<span class="\${cls}">\${ev.questionId}</span> <span style='color:var(--muted)'>[</span><span style='color:var(--muted)'>\${TYPE_LABELS[ev.questionType]||ev.questionType}</span><span style='color:var(--muted)'>]</span>\`,
-        ev.explanation.slice(0, 90) + (ev.explanation.length > 90 ? "…" : ""),
+        ev.explanation,
         ev.runningCorrect + "/" + ev.done
       );
       break;
