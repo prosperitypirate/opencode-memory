@@ -23,6 +23,9 @@ SCHEMA = pa.schema([
     # Raw source conversation text — enables hybrid search (memory for retrieval,
     # chunk for LLM to read exact values like config numbers / error strings).
     pa.field("chunk",         pa.string()),
+    # Relational versioning — ID of the newer memory that supersedes this one, or "".
+    # Superseded memories are excluded from search results so only the latest state wins.
+    pa.field("superseded_by", pa.string()),
 ])
 
 # ── API request models ─────────────────────────────────────────────────────────

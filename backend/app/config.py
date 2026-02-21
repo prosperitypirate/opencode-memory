@@ -52,6 +52,18 @@ STRUCTURAL_TYPES: frozenset[str] = frozenset({
     "project-brief", "architecture", "tech-context", "product-context", "project-config",
 })
 
+# ── Relational versioning ──────────────────────────────────────────────────────
+
+# Cosine distance below which a memory is a candidate for contradiction detection.
+# Broader than dedup (0.12) to catch topic-related contradictions like ORM migrations.
+CONTRADICTION_CANDIDATE_DISTANCE: float = 0.5
+
+# Max candidate memories to send to the contradiction-detection LLM call per new memory.
+CONTRADICTION_CANDIDATE_LIMIT: int = 10
+
+# Memory types that skip contradiction detection (they have dedicated lifecycle rules).
+VERSIONING_SKIP_TYPES: frozenset[str] = frozenset({"session-summary", "progress"})
+
 # ── Memory aging ───────────────────────────────────────────────────────────────
 
 # Max session-summary entries per project before the oldest is condensed → learned-pattern

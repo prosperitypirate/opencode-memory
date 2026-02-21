@@ -55,11 +55,18 @@ async def lifespan(app: FastAPI):
         else:
             db.table = ldb.open_table("memories")
             existing_columns = [f.name for f in db.table.schema]
-            if "chunk" not in existing_columns:
-                logger.info("Migrating memories table: adding 'chunk' column...")
+            needs_migration = [
+                col for col in ("chunk", "superseded_by")
+                if col not in existing_columns
+            ]
+            if needs_migration:
+                logger.info(
+                    "Migrating memories table: adding columns %s...", needs_migration
+                )
                 import pandas as pd
                 df = db.table.to_pandas()
-                df["chunk"] = ""
+                for col in needs_migration:
+                    df[col] = ""
                 ldb.drop_table("memories")
                 db.table = ldb.create_table("memories", data=df, schema=SCHEMA)
                 logger.info("Migration complete (%d rows preserved)", db.table.count_rows())

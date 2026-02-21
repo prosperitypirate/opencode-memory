@@ -13,9 +13,16 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from . import db
-from .config import DEDUP_DISTANCE, MAX_SESSION_SUMMARIES, validate_id
+from .config import (
+    CONTRADICTION_CANDIDATE_DISTANCE,
+    CONTRADICTION_CANDIDATE_LIMIT,
+    DEDUP_DISTANCE,
+    MAX_SESSION_SUMMARIES,
+    VERSIONING_SKIP_TYPES,
+    validate_id,
+)
 from .embedder import embed
-from .extractor import condense_to_learned_pattern
+from .extractor import condense_to_learned_pattern, detect_contradictions
 
 logger = logging.getLogger("memory-server")
 
@@ -49,6 +56,86 @@ def find_duplicate(
     except Exception as e:
         logger.debug("Dedup search error: %s", e)
     return None
+
+
+# ── Relational versioning ──────────────────────────────────────────────────────
+
+
+def find_contradiction_candidates(
+    user_id: str,
+    vector: list[float],
+    new_id: str,
+    limit: int = CONTRADICTION_CANDIDATE_LIMIT,
+    max_distance: float = CONTRADICTION_CANDIDATE_DISTANCE,
+) -> list[dict]:
+    """Return non-superseded memories within *max_distance* that may contradict *new_id*.
+
+    Excludes the new memory itself and any already-superseded entries.
+    Returns an empty list when the table is empty or the search fails.
+    """
+    try:
+        validate_id(user_id, "user_id")
+        validate_id(new_id, "new_id")
+        if db.table.count_rows() == 0:
+            return []
+        results = (
+            db.table.search(vector, vector_column_name="vector")
+            .metric("cosine")
+            .where(
+                f"user_id = '{user_id}' AND id != '{new_id}' AND superseded_by = ''",
+                prefilter=True,
+            )
+            .limit(limit)
+            .to_list()
+        )
+        return [r for r in results if r.get("_distance", 1.0) <= max_distance]
+    except Exception as e:
+        logger.debug("find_contradiction_candidates error: %s", e)
+        return []
+
+
+def mark_superseded(old_id: str, new_id: str) -> None:
+    """Set *old_id*.superseded_by = *new_id* to retire a stale memory."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        db.table.update(
+            where=f"id = '{old_id}'",
+            values={"superseded_by": new_id, "updated_at": now},
+        )
+        logger.info("Versioning: memory %s superseded by %s", old_id, new_id)
+    except Exception as e:
+        logger.warning("mark_superseded error for %s → %s: %s", old_id, new_id, e)
+
+
+def check_and_supersede(
+    user_id: str,
+    new_memory: str,
+    vector: list[float],
+    new_id: str,
+    memory_type: str,
+) -> list[str]:
+    """Full versioning pass for a newly inserted memory.
+
+    1. Skip types that have their own lifecycle rules (progress, session-summary).
+    2. Find candidate memories within contradiction distance.
+    3. Ask the LLM which candidates are superseded by the new memory.
+    4. Mark each confirmed superseded memory.
+
+    Returns the list of IDs that were marked superseded (empty if none).
+    """
+    if memory_type in VERSIONING_SKIP_TYPES:
+        return []
+
+    candidates = find_contradiction_candidates(user_id, vector, new_id)
+    if not candidates:
+        return []
+
+    superseded_ids = detect_contradictions(new_memory, candidates)
+
+    for sid in superseded_ids:
+        mark_superseded(sid, new_id)
+
+    return superseded_ids
 
 
 # ── Type queries ───────────────────────────────────────────────────────────────
@@ -133,7 +220,8 @@ def _age_session_summaries(user_id: str) -> None:
                 "created_at": now,
                 "updated_at": now,
                 "hash":       hashlib.md5(condensed["memory"].encode()).hexdigest(),
-                "chunk":      "",  # condensed learned-patterns have no single source chunk
+                "chunk":         "",  # condensed learned-patterns have no single source chunk
+                "superseded_by": "",
             }])
 
         db.table.delete(f"id = '{oldest['id']}'")
