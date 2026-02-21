@@ -11,6 +11,10 @@ import { registerClient, unregisterClient } from "./emitter.js";
 const LIVE_PORT = 4242;
 
 export function startLiveServer(): void {
+  const opener: Record<string, string> = { darwin: "open", linux: "xdg-open", win32: "start" };
+  const cmd = opener[process.platform];
+  if (cmd) Bun.spawn([cmd, `http://localhost:${LIVE_PORT}`], { stdout: null, stderr: null });
+
   Bun.serve({
     port: LIVE_PORT,
     fetch(req) {
