@@ -127,8 +127,12 @@ async def add_memory(req: AddMemoryRequest):
 
 
 @router.get("/memories")
-async def list_memories(user_id: str, limit: int = 20):
-    """List stored memories for *user_id*, ordered by most recently updated."""
+async def list_memories(user_id: str, limit: int = 20, include_superseded: bool = False):
+    """List stored memories for *user_id*, ordered by most recently updated.
+
+    By default superseded memories (retired by relational versioning) are excluded.
+    Pass ``include_superseded=true`` to include them — needed for full cleanup passes.
+    """
     if db.table is None:
         raise HTTPException(status_code=503, detail="Memory server not initialised")
 
@@ -140,8 +144,8 @@ async def list_memories(user_id: str, limit: int = 20):
         df      = db.table.to_pandas()
         user_df = df[df["user_id"] == user_id].copy()
 
-        # Exclude superseded memories (stale entries retired by relational versioning).
-        if "superseded_by" in user_df.columns:
+        # Exclude superseded memories unless the caller explicitly requests them.
+        if "superseded_by" in user_df.columns and not include_superseded:
             user_df = user_df[user_df["superseded_by"] == ""]
 
         if "updated_at" in user_df.columns:

@@ -109,9 +109,10 @@ export class OpencodeMemoryProvider implements Provider {
    * Delete all memories for a run tag (cleanup after benchmark).
    */
   async clear(runTag: string): Promise<void> {
-    // List all memories for this run tag
+    // include_superseded=true ensures memories retired by relational versioning
+    // during the run are also returned and deleted — otherwise they are orphaned.
     const res = await fetch(
-      `${this.baseUrl}/memories?user_id=${encodeURIComponent(runTag)}&limit=1000`
+      `${this.baseUrl}/memories?user_id=${encodeURIComponent(runTag)}&limit=1000&include_superseded=true`
     );
 
     if (!res.ok) {
