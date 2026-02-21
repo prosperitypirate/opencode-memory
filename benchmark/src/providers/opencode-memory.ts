@@ -140,7 +140,11 @@ export class OpencodeMemoryProvider implements Provider {
       const del = await fetch(`${this.baseUrl}/memories/${id}`, { method: "DELETE" });
       if (del.ok) {
         deleted++;
-        emit({ type: "cleanup_progress", deleted, total: ids.length });
+        // Emit at 25%, 50%, 75%, and 100% to avoid flooding the feed
+        const pct = deleted / ids.length;
+        if (pct === 1 || deleted === 1 || Math.floor((deleted - 1) / ids.length * 4) < Math.floor(pct * 4)) {
+          emit({ type: "cleanup_progress", deleted, total: ids.length });
+        }
       }
     }
     log.success(`Cleaned up ${deleted}/${ids.length} memories for run tag ${runTag}`);

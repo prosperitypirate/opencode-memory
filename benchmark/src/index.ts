@@ -151,6 +151,8 @@ async function cmdRun(args: string[]): Promise<void> {
   } else {
     log.warn("Skipping cleanup (--no-cleanup). Memories remain in backend.");
   }
+
+  emit({ type: "phase_start", phase: "done" });
 }
 
 function cmdStatus(args: string[]): void {
