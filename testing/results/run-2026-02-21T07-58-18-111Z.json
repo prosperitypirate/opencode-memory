@@ -1,0 +1,154 @@
+[
+  {
+    "id": "01",
+    "name": "Cross-Session Memory Continuity",
+    "status": "PASS",
+    "durationMs": 17307,
+    "details": [
+      "test dir: /private/tmp/oc-test-cross-session-bab35157",
+      "Session 1: describing project to agent…",
+      "  sessionID: ses_380cc7195ffegmhKP9rPjsc0Ux",
+      "  exitCode: 0, duration: 7.8s",
+      "  response preview: I understand the project. Here's what I have from memory:\n\n**taskflow** - TypeScript CLI tool (v0.1.…",
+      "Waiting up to 30s for auto-save to fire…",
+      "  memories saved: 3",
+      "  types: tech-context, progress, session-summary",
+      "Session 2: asking project-specific question to verify memory recall…",
+      "  sessionID: ses_380cc4aaaffel6AEbJCeURPog6",
+      "  exitCode: 0, duration: 7.4s",
+      "  response length: 469 chars",
+      "  preview: Let me check the current state of the working directory.The working directory is empty. Based on memory context, this is the **taskflow CLI** project — a Bun + TypeScript CLI tool using SQLite via `bu…",
+      "  [✓] Response not empty",
+      "  [✓] Mentions 'taskflow' (from memory)",
+      "  [✓] Mentions tech (SQLite/Bun/TypeScript)",
+      "  [✓] Memories saved (backend check)"
+    ],
+    "evidence": {
+      "memoriesCount": 3,
+      "types": [
+        "tech-context",
+        "progress",
+        "session-summary"
+      ],
+      "responsePreview": "Let me check the current state of the working directory.The working directory is empty. Based on memory context, this is the **taskflow CLI** project — a Bun + TypeScript CLI tool using SQLite via `bun:sqlite` and a `TaskRepository` class (Repository pattern). The `add` and `list` commands are done; the `done <id>` command was in progress.\n\nDo you want to share the existing code, or should I start fresh and implement the full project (including the `done` command)?"
+    }
+  },
+  {
+    "id": "02",
+    "name": "README-Based Project-Brief Seeding",
+    "status": "PASS",
+    "durationMs": 11299,
+    "details": [
+      "test dir: /private/tmp/oc-test-readme-seeding-9f97929f",
+      "Session 1: starting with README.md in place…",
+      "  exitCode: 0, duration: 7.3s",
+      "Waiting up to 35s for project-brief memory…",
+      "  total memories: 2",
+      "  project-brief count: 1",
+      "Session 2: asking about Nexus project to verify README-seeded memory…",
+      "  exitCode: 0, duration: 3.9s",
+      "  response length: 274 chars",
+      "  preview: Based on the memory context loaded at session start, I have context about **Nexus**:\n\n- **Database:** Neo4j 5\n- **API layer:** Fastify + GraphQL\n- **Runtime:** Node.js 20\n- **Auth:** JWT via Redis ses",
+      "  [✓] project-brief in backend",
+      "  [✓] Response mentions 'Nexus'",
+      "  [✓] Response mentions database tech (Neo4j/Redis)"
+    ],
+    "evidence": {
+      "briefCount": 1,
+      "responsePreview": "Based on the memory context loaded at session start, I have context about **Nexus**:\n\n- **Database:** Neo4j 5\n- **API layer:** Fastify + GraphQL\n- **Runtime:** Node.js 20\n- **Auth:** JWT via Redis session store\n- **Features:** Full-text search, auto-tagging, Markdown export"
+    }
+  },
+  {
+    "id": "03",
+    "name": "Transcript Noise Guard in Relevant Section",
+    "status": "PASS",
+    "durationMs": 12310,
+    "details": [
+      "test dir: /private/tmp/oc-test-transcript-noise-a4a785b9",
+      "Session 1: multi-turn project conversation…",
+      "  exitCode: 0, duration: 4.2s",
+      "Waiting for memories…",
+      "  total memories: 1",
+      "  memories with transcript noise: 0",
+      "    ok: \"ferrite-api is a Rust web service using Axum for routing, SQLx for PostgreSQL da…\" [project-brief]",
+      "Session 2: asking about ferrite-api to verify recall…",
+      "  exitCode: 0, duration: 5.9s",
+      "  response: Based on the memory context loaded for this session, I have context about **ferrite-api**, a Rust web service with the following key components:\n\n- **Routing**: Axum\n- **Database**: SQLx with PostgreS",
+      "  [✓] At least 1 memory saved",
+      "  [✓] No transcript noise in memories",
+      "  [✓] Session 2 recalls ferrite-api",
+      "  [✓] Session 2 recalls tech (Axum/SQLx/Redis)"
+    ],
+    "evidence": {
+      "totalMemories": 1,
+      "noisyCount": 0,
+      "responsePreview": "Based on the memory context loaded for this session, I have context about **ferrite-api**, a Rust web service with the following key components:\n\n- **Routing**: Axum\n- **Database**: SQLx with PostgreSQL\n- **Caching**: Redis, with current focus on optimizing the connection pool at `src/cache/redis_pool.rs` for high throughput\n\nThat's the extent of what's stored. I don't have details about the broad"
+    }
+  },
+  {
+    "id": "04",
+    "name": "Project Brief Always Present (Issue #24)",
+    "status": "PASS",
+    "durationMs": 15677,
+    "details": [
+      "test dir: /private/tmp/oc-test-project-brief-always-e30032e5",
+      "Note: no README — project-brief must come from extraction or seedProjectBrief",
+      "Session 1: describing project without any README…",
+      "  exitCode: 0, duration: 4.0s",
+      "Waiting 35s for memories (incl. project-brief extraction)…",
+      "  total memories: 2",
+      "  project-brief memories: 0",
+      "  memory types present: tech-context, progress",
+      "Session 2: asking about lumina project to verify project-brief recall…",
+      "  exitCode: 0, duration: 6.4s",
+      "  response length: 717 chars",
+      "  preview: Based on the memory context injected at the start of this session, I have context about **Lumina** — a collaborative editing application.\n\n**Purpose:** Real-time collaborative document/content editing",
+      "  DIAGNOSTIC: no project-brief in backend — seedProjectBrief may not have fired or extraction failed",
+      "  [✓] Memories saved in backend",
+      "  [✓] Response mentions 'lumina'",
+      "  [✓] Response mentions purpose (collaborative/whiteboard/CRDT)",
+      "  [✓] Response mentions tech (React/Yjs/TypeScript)"
+    ],
+    "evidence": {
+      "briefCount": 0,
+      "types": [
+        "tech-context",
+        "progress"
+      ],
+      "responsePreview": "Based on the memory context injected at the start of this session, I have context about **Lumina** — a collaborative editing application.\n\n**Purpose:** Real-time collaborative document/content editing (the CRDT usage implies conflict-free multi-user editing).\n\n**Technology stack:**\n- Frontend: React, TypeScript, Vite\n- Collaboration layer: Yjs (CRDT for conflict-free real-time sync)\n- Backend: Express + Socket.io (WebSocket-based communication)\n\n**Current status:** MVP is complete; undo/redo functionality is in progress.\n\nThat's the extent of what's in memory — no source code is present in the"
+    }
+  },
+  {
+    "id": "05",
+    "name": "Memory Aging (progress replacement, session-summary cap)",
+    "status": "PASS",
+    "durationMs": 31058,
+    "details": [
+      "test dir: /private/tmp/oc-test-memory-aging-ee07e38d",
+      "Session 1: sending status update…",
+      "  exitCode: 0, duration: 3.4s",
+      "Session 2: sending status update…",
+      "  exitCode: 0, duration: 3.4s",
+      "Session 3: sending status update…",
+      "  exitCode: 0, duration: 4.0s",
+      "Waiting 30s for all auto-saves to complete…",
+      "  total memories: 1",
+      "  progress memories: 1 (should be ≤ 1)",
+      "  session-summary memories: 0 (should be ≤ 3)",
+      "  type breakdown: {\"progress\":1}",
+      "  surviving progress: \"vaultdb project at v0.3 almost complete: CLI interface working, key management solved; next step is …\"",
+      "  [✓] At least 1 memory saved (auto-save fired)",
+      "  [✓] At least 1 progress memory created",
+      "  [✓] progress memories ≤ 1 (aging replaced older ones)",
+      "  [✓] session-summary memories ≤ 3"
+    ],
+    "evidence": {
+      "progressCount": 1,
+      "summaryCount": 0,
+      "typeCounts": {
+        "progress": 1
+      },
+      "totalMemories": 1
+    }
+  }
+]

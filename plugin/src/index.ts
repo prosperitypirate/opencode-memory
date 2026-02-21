@@ -213,7 +213,7 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
 
   const autoSaveHook =
     isConfigured() && ctx.client
-      ? createAutoSaveHook(tags)
+      ? createAutoSaveHook(tags, ctx.client)
       : null;
 
   return {
@@ -288,9 +288,14 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
           // ── Auto-init: no project memory yet ──────────────────────────────
           // Silently read key project files in the background and send for extraction.
           // Nothing is injected into the conversation — completely transparent to the user.
+          //
+          // Awaited (not fire-and-forget) so the HTTP request completes before
+          // opencode run exits. In TUI sessions this adds ~2-5s to the first
+          // message latency (memory server extracts from files synchronously).
+          // Trade-off accepted: fire-and-forget causes silent failure in run mode.
           if (allProjectMemories.length === 0) {
             if (detectExistingCodebase(directory)) {
-              triggerSilentAutoInit(directory, tags).catch(
+              await triggerSilentAutoInit(directory, tags).catch(
                 (err) => log("auto-init: failed", { error: String(err) })
               );
             }
@@ -318,8 +323,9 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
           // ran in a previous session but extraction never emitted type=project-brief),
           // seed one from the README in the background.  The backend dedup logic
           // prevents duplicate briefs from accumulating.
+          // Awaited so the request reaches the memory server before opencode run exits.
           if (allProjectMemories.length > 0 && !byType["project-brief"]) {
-            seedProjectBrief(directory, tags).catch(
+            await seedProjectBrief(directory, tags).catch(
               (err) => log("seed-brief: failed", { error: String(err) })
             );
           }
@@ -597,7 +603,8 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
           info.id
         ) {
           log("auto-save: terminal finish detected", { finish: info.finish, sessionID: info.sessionID });
-          autoSaveHook.onSessionIdle(info.sessionID as string);
+          // Await the hook so opencode run doesn't exit before extraction completes
+          await autoSaveHook.onSessionIdle(info.sessionID as string);
         }
       }
     },

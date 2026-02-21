@@ -1,9 +1,10 @@
 import type { Message, Part } from "@opencode-ai/sdk";
+import type { PluginInput } from "@opencode-ai/plugin";
 import { memoryClient } from "./client.js";
 import { log } from "./logger.js";
 import { CONFIG } from "../config.js";
 
-const MIN_EXCHANGE_CHARS = 300;
+const MIN_EXCHANGE_CHARS = 100;
 const MAX_MESSAGES = 8;
 const COOLDOWN_MS = 15_000;
 
@@ -14,6 +15,11 @@ export interface CachedMessage {
 
 // Module-level cache updated by experimental.chat.messages.transform before every LLM call.
 // Shared across all plugin instances (module scope = singleton).
+// NOTE: this cache only includes messages UP TO (not including) the latest LLM response,
+// because the transform fires BEFORE the LLM call. In single-turn sessions (opencode run),
+// this means the cache will only ever contain the user message, causing auto-save to skip
+// (recentCount < 2). We work around this by fetching fresh messages from the SDK client
+// when available, falling back to the cache for older code paths.
 let cachedMessages: CachedMessage[] = [];
 
 export function updateMessageCache(messages: CachedMessage[]): void {
@@ -26,9 +32,12 @@ const lastExtracted = new Map<string, number>();
 // Track turn counts per session for periodic session summaries.
 const turnCountPerSession = new Map<string, number>();
 
-export function createAutoSaveHook(tags: { user: string; project: string }) {
+export function createAutoSaveHook(
+  tags: { user: string; project: string },
+  client?: PluginInput["client"]
+) {
   return {
-    onSessionIdle(sessionID: string): void {
+    async onSessionIdle(sessionID: string): Promise<void> {
       const now = Date.now();
       const last = lastExtracted.get(sessionID) ?? 0;
 
@@ -55,35 +64,75 @@ export function createAutoSaveHook(tags: { user: string; project: string }) {
         if (oldest) turnCountPerSession.delete(oldest);
       }
 
-      // Always run atomic fact extraction
-      extractAndSave(snapshot, tags, sessionID).catch(
-        (err) => log("auto-save: unhandled error", { error: String(err) })
-      );
+      // Await fact extraction so it completes before the process exits
+      // (critical for opencode run single-turn sessions that exit immediately after)
+      const promises: Promise<void>[] = [
+        extractAndSave(snapshot, tags, sessionID, client).catch(
+          (err) => log("auto-save: unhandled error", { error: String(err) })
+        ),
+      ];
 
       // Every N turns, also generate a session-summary
       const interval = CONFIG.turnSummaryInterval ?? 5;
       if (newCount % interval === 0) {
         log("auto-save: generating session summary", { sessionID, turn: newCount });
-        generateSessionSummary(snapshot, tags, sessionID).catch(
-          (err) => log("auto-save: session summary error", { error: String(err) })
+        promises.push(
+          generateSessionSummary(snapshot, tags, sessionID, client).catch(
+            (err) => log("auto-save: session summary error", { error: String(err) })
+          )
         );
       }
+
+      await Promise.all(promises);
     },
   };
 }
 
+/**
+ * Fetch the current session messages via the SDK client.
+ * Falls back to the provided snapshot if the fetch fails or the client is unavailable.
+ * This is needed for single-turn sessions (opencode run) where the transform cache
+ * only has the user message at the time auto-save fires.
+ */
+async function fetchMessages(
+  sessionID: string,
+  snapshot: CachedMessage[],
+  client?: PluginInput["client"]
+): Promise<CachedMessage[]> {
+  if (!client) return snapshot;
+  try {
+    // v1 plugin SDK uses path.id format: { path: { id: sessionID } }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await (client.session as any).messages({ path: { id: sessionID } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (res as any).data as Array<{ info: Message; parts: Part[] }> | undefined;
+    if (data && data.length > 0) {
+      log("auto-save: fetched fresh messages from SDK", { sessionID, count: data.length });
+      return data;
+    }
+  } catch (err) {
+    log("auto-save: SDK message fetch failed, using cache", { sessionID, error: String(err) });
+  }
+  return snapshot;
+}
+
 async function extractAndSave(
-  allMessages: CachedMessage[],
+  snapshot: CachedMessage[],
   tags: { user: string; project: string },
-  sessionID: string
+  sessionID: string,
+  client?: PluginInput["client"]
 ): Promise<void> {
   try {
+    const allMessages = await fetchMessages(sessionID, snapshot, client);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Filter to user/assistant messages that have real (non-synthetic) text content.
+    // NOTE: We intentionally do NOT filter out messages where info.summary === true.
+    // In opencode run (single-turn) mode, the first user message is marked summary:true
+    // by OpenCode (it bundles context), but it still contains the real user text.
+    // Excluding summary messages caused realCount to always be 1, breaking auto-save.
     const real = allMessages.filter((m: any) => {
       const role = m.info?.role as string;
-      const isSummary = !!m.info?.summary;
       return (role === "user" || role === "assistant") &&
-        !isSummary &&
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         m.parts?.some((p: any) => p.type === "text" && !p.synthetic && p.text?.trim());
     });
@@ -122,17 +171,18 @@ async function extractAndSave(
 }
 
 async function generateSessionSummary(
-  allMessages: CachedMessage[],
+  snapshot: CachedMessage[],
   tags: { user: string; project: string },
-  sessionID: string
+  sessionID: string,
+  client?: PluginInput["client"]
 ): Promise<void> {
   try {
+    const allMessages = await fetchMessages(sessionID, snapshot, client);
+    // Same filter as extractAndSave — do NOT exclude summary:true messages.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const real = allMessages.filter((m: any) => {
       const role = m.info?.role as string;
-      const isSummary = !!m.info?.summary;
       return (role === "user" || role === "assistant") &&
-        !isSummary &&
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         m.parts?.some((p: any) => p.type === "text" && !p.synthetic && p.text?.trim());
     });
