@@ -19,6 +19,7 @@ import { run as run02 } from "./scenarios/02-readme-seeding.js";
 import { run as run03 } from "./scenarios/03-transcript-noise.js";
 import { run as run04 } from "./scenarios/04-project-brief-always.js";
 import { run as run05 } from "./scenarios/05-memory-aging.js";
+import { run as run06 } from "./scenarios/06-existing-codebase.js";
 
 const BOLD  = "\x1b[1m";
 const CYAN  = "\x1b[36m";
@@ -32,6 +33,7 @@ const ALL_SCENARIOS: Array<{ id: string; fn: () => Promise<ScenarioResult> }> = 
   { id: "03", fn: run03 },
   { id: "04", fn: run04 },
   { id: "05", fn: run05 },
+  { id: "06", fn: run06 },
 ];
 
 async function main() {
