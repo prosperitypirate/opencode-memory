@@ -1,0 +1,15 @@
+{
+  "name": "opencode-memory-testing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end tests for the opencode-memory plugin — fully autonomous, no user interaction required",
+  "scripts": {
+    "test": "bun run src/runner.ts",
+    "test:scenario": "bun run src/runner.ts --scenario"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

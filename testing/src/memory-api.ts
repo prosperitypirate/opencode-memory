@@ -1,0 +1,104 @@
+/**
+ * memory-api.ts — typed client for the opencode-memory backend (localhost:8020)
+ *
+ * Mirrors the calls made by the plugin's memoryClient for verification in tests.
+ */
+
+import { createHash } from "crypto";
+import { execSync } from "child_process";
+
+const BACKEND = process.env["MEMORY_BACKEND_URL"] ?? "http://localhost:8020";
+const PREFIX  = "opencode";
+
+function sha256(input: string): string {
+  return createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
+/** Compute the user tag the plugin would use (mirrors plugin/src/services/tags.ts) */
+function getUserTag(): string {
+  try {
+    const email = execSync("git config user.email", { encoding: "utf-8" }).trim();
+    if (email) return `${PREFIX}_user_${sha256(email)}`;
+  } catch {}
+  const fallback = process.env["USER"] ?? process.env["USERNAME"] ?? "anonymous";
+  return `${PREFIX}_user_${sha256(fallback)}`;
+}
+
+const USER_TAG = getUserTag();
+
+export type MemoryType =
+  | "project-brief"
+  | "architecture"
+  | "tech-context"
+  | "product-context"
+  | "progress"
+  | "project-config"
+  | "error-solution"
+  | "preference"
+  | "learned-pattern"
+  | "session-summary"
+  | "conversation";
+
+export interface Memory {
+  id: string;
+  memory: string;
+  user_id: string;
+  metadata: { type?: MemoryType };
+  created_at: string;
+  updated_at: string;
+}
+
+/** Compute the project tag for a given directory path (matches plugin's getTags logic) */
+export function projectTagForDir(dir: string): string {
+  const hash = createHash("sha256").update(dir).digest("hex").slice(0, 16);
+  return `opencode_project_${hash}`;
+}
+
+/** Fetch all memories for a project directory */
+export async function getMemoriesForDir(dir: string): Promise<Memory[]> {
+  const projectTag = projectTagForDir(dir);
+  return getMemoriesForTag(projectTag);
+}
+
+/** Fetch all memories for a project tag */
+export async function getMemoriesForTag(projectTag: string): Promise<Memory[]> {
+  // The plugin stores project memories with user_id = projectTag (not the user tag).
+  // The server uses user_id as the container key for filtering.
+  const url = `${BACKEND}/memories?user_id=${encodeURIComponent(projectTag)}&limit=100`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Memory API ${res.status}: ${await res.text()}`);
+  const data = (await res.json()) as { results: Memory[] };
+  return data.results ?? [];
+}
+
+/** Count memories of a specific type for a directory */
+export async function countByType(dir: string, type: MemoryType): Promise<number> {
+  const memories = await getMemoriesForDir(dir);
+  return memories.filter((m) => m.metadata?.type === type).length;
+}
+
+/** Wait until the backend has at least `minCount` memories for a directory */
+export async function waitForMemories(
+  dir: string,
+  minCount: number,
+  timeoutMs = 30_000
+): Promise<Memory[]> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const memories = await getMemoriesForDir(dir);
+    if (memories.length >= minCount) return memories;
+    await Bun.sleep(1000);
+  }
+  return getMemoriesForDir(dir);
+}
+
+/** Health check */
+export async function isBackendReady(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BACKEND}/health`);
+    const data = (await res.json()) as { ready?: boolean };
+    return data.ready === true;
+  } catch {
+    return false;
+  }
+}

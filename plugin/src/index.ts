@@ -213,7 +213,7 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
 
   const autoSaveHook =
     isConfigured() && ctx.client
-      ? createAutoSaveHook(tags)
+      ? createAutoSaveHook(tags, ctx.client)
       : null;
 
   return {
@@ -597,7 +597,8 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
           info.id
         ) {
           log("auto-save: terminal finish detected", { finish: info.finish, sessionID: info.sessionID });
-          autoSaveHook.onSessionIdle(info.sessionID as string);
+          // Await the hook so opencode run doesn't exit before extraction completes
+          await autoSaveHook.onSessionIdle(info.sessionID as string);
         }
       }
     },

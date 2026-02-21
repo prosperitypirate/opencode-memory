@@ -1,0 +1,141 @@
+[
+  {
+    "id": "01",
+    "name": "Cross-Session Memory Continuity",
+    "status": "FAIL",
+    "durationMs": 13333,
+    "details": [
+      "test dir: /private/tmp/oc-test-cross-session-7564c350",
+      "Session 1: describing project to agent…",
+      "  sessionID: ses_380e2696dffeqNFzcdCWD5YmvW",
+      "  exitCode: 0, duration: 7.8s",
+      "  response preview: I've reviewed your memory context. Here's what I understand:\n\n- You're building **taskflow**, a Type…",
+      "Waiting up to 30s for auto-save to fire…",
+      "  memories saved: 3",
+      "  types: tech-context, preference",
+      "Session 2: requesting [MEMORY] block from agent…",
+      "  sessionID: ses_380e24b0fffeDymHeu7Wk5uzMg",
+      "  exitCode: 0, duration: 5.5s",
+      "  [MEMORY] block length: 1565 chars",
+      "  preview: Here is the full `[MEMORY]` block exactly as it was injected into my context:\n\n```\n[MEMORY]\n\n## User Preferences\n- Do not trust the model's self-ident…",
+      "  [✓] Response not empty",
+      "  [✓] [MEMORY] header present",
+      "  [✗] Contains 'taskflow'",
+      "  [✓] Contains some section header"
+    ],
+    "evidence": {
+      "memoriesCount": 3,
+      "types": [
+        "tech-context",
+        "tech-context",
+        "preference"
+      ],
+      "memoryBlockPreview": "Here is the full `[MEMORY]` block exactly as it was injected into my context:\n\n```\n[MEMORY]\n\n## User Preferences\n- Do not trust the model's self-identification as 'Claude Code' since it is an artifact of OpenCode's prompt injection workaround to evade Anthropic restrictions.\n- Auto-save plugin hooks (auto-save.ts) DO run in this OpenCode environment; reference OpenCode GitHub issue #13142 for details.\n- User's core preference: memory systems must be completely transparent and automatic—no user c"
+    }
+  },
+  {
+    "id": "02",
+    "name": "README-Based Project-Brief Seeding",
+    "status": "FAIL",
+    "durationMs": 12680,
+    "details": [
+      "test dir: /private/tmp/oc-test-readme-seeding-794d2d39",
+      "Session 1: starting with README.md in place…",
+      "  exitCode: 0, duration: 7.5s",
+      "Waiting up to 35s for project-brief memory…",
+      "  total memories: 3",
+      "  project-brief count: 0",
+      "  project-brief count (after extra wait): 0"
+    ],
+    "error": "No project-brief memory created even with README present"
+  },
+  {
+    "id": "03",
+    "name": "Transcript Noise Guard in Relevant Section",
+    "status": "PASS",
+    "durationMs": 11044,
+    "details": [
+      "test dir: /private/tmp/oc-test-transcript-noise-a32e4b73",
+      "Session 1: multi-turn project conversation…",
+      "  exitCode: 0, duration: 4.2s",
+      "Waiting for memories…",
+      "Session 2: requesting [MEMORY] block…",
+      "  exitCode: 0, duration: 6.8s",
+      "  block length: 1700 chars",
+      "  ## Relevant section length: 990 chars",
+      "  Transcript noise in Relevant section: none",
+      "  Transcript noise anywhere in block: none",
+      "  [✓] [MEMORY] block returned",
+      "  [✓] Has at least one ## section",
+      "  [✓] No [user]/[assistant] noise in Relevant",
+      "  [✓] No transcript noise anywhere"
+    ],
+    "evidence": {
+      "relevantSection": "- [51%, 2026-02-19] User's core preference: memory systems must be completely transparent and automatic—no user commands, no visible memory messages in chat; must work silently in background to match or exceed previous Cline + per-project markdown memory bank quality without manual intervention.\n- [37%, 2026-02-19] Do not trust the model's self-identification as 'Claude Code' since it is an artifa",
+      "fullBlockPreview": "Here is the complete `[MEMORY]` block exactly as injected into my context:\n\n```\n[MEMORY]\n\n## User Preferences\n- Do not trust the model's self-identification as 'Claude Code' since it is an artifact of OpenCode's prompt injection workaround to evade Anthropic restrictions.\n- Auto-save plugin hooks (auto-save.ts) DO run in this OpenCode environment; reference OpenCode GitHub issue #13142 for details.\n- User's core preference: memory systems must be completely transparent and automatic—no user commands, no visible memory messages in chat; must work silently in background to match or exceed previo"
+    }
+  },
+  {
+    "id": "04",
+    "name": "Project Brief Always Present (Issue #24)",
+    "status": "FAIL",
+    "durationMs": 13156,
+    "details": [
+      "test dir: /private/tmp/oc-test-project-brief-always-2bcc2f67",
+      "Note: no README — project-brief must come from extraction or seedProjectBrief",
+      "Session 1: describing project without any README…",
+      "  exitCode: 0, duration: 4.6s",
+      "Waiting 35s for memories (incl. project-brief extraction)…",
+      "  total memories: 3",
+      "  project-brief memories: 0",
+      "  memory types present: tech-context, preference",
+      "Session 2: verifying ## Project Brief in [MEMORY] block…",
+      "  exitCode: 0, duration: 5.4s",
+      "  block length: 1448 chars",
+      "  [✓] [MEMORY] block present",
+      "  [✗] ## Project Brief section present",
+      "  [✗] project-brief in backend",
+      "  [✗] Contains 'lumina'"
+    ],
+    "evidence": {
+      "briefCount": 0,
+      "types": [
+        "tech-context",
+        "preference"
+      ],
+      "blockPreview": "Here is the complete `[MEMORY]` block that was injected into my context at the start of this session:\n\n```\n[MEMORY]\n\n## User Preferences\n- Do not trust the model's self-identification as 'Claude Code' since it is an artifact of OpenCode's prompt injection workaround to evade Anthropic restrictions.\n- Auto-save plugin hooks (auto-save.ts) DO run in this OpenCode environment; reference OpenCode GitHub issue #13142 for details.\n- User's core preference: memory systems must be completely transparent and automatic—no user commands, no visible memory messages in chat; must work silently in backgroun"
+    }
+  },
+  {
+    "id": "05",
+    "name": "Memory Aging (progress replacement, session-summary cap)",
+    "status": "PASS",
+    "durationMs": 42156,
+    "details": [
+      "test dir: /private/tmp/oc-test-memory-aging-481727f1",
+      "Session 1: sending status update…",
+      "  exitCode: 0, duration: 8.2s",
+      "Session 2: sending status update…",
+      "  exitCode: 0, duration: 9.1s",
+      "Session 3: sending status update…",
+      "  exitCode: 0, duration: 4.8s",
+      "Waiting 30s for all auto-saves to complete…",
+      "  total memories: 3",
+      "  progress memories: 0 (should be ≤ 1)",
+      "  session-summary memories: 0 (should be ≤ 3)",
+      "  type breakdown: {\"tech-context\":2,\"preference\":1}",
+      "  [✓] At least 1 memory saved",
+      "  [✓] progress memories ≤ 1 (aging works)",
+      "  [✓] session-summary memories ≤ 3"
+    ],
+    "evidence": {
+      "progressCount": 0,
+      "summaryCount": 0,
+      "typeCounts": {
+        "tech-context": 2,
+        "preference": 1
+      },
+      "totalMemories": 3
+    }
+  }
+]
