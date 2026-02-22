@@ -40,7 +40,7 @@ cross-synthesis   ███████████████░░░░░  
 Overall           92.0%  (184/200)                    was 91.0% (+1pp)
 ```
 
-#### Retrieval Quality (K=8 evaluation, K=20 retrieval)
+#### Retrieval Quality (K=8 — evaluated before retrieval K alignment fix)
 
 ```
 Hit@8        █████████████████░░░  85.5%
@@ -50,7 +50,7 @@ MRR                               0.724
 NDCG                              0.739
 ```
 
-> The retrieval limit is K=20 (backend returns up to 20 memories). Retrieval metrics are evaluated at K=8 (top-8 slice) — a stricter measure. Hit@8 at 85.5% means the right memory is in the top 8 for 85.5% of questions.
+> **Note:** `retrieval-eval.ts` had `const K = 8` hardcoded — so even though the backend retrieved 20 results, only the top 8 were evaluated. This was fixed in PR #36: K is now derived dynamically from `results.length`, so future runs will correctly report retrieval metrics at K=20 (or whatever limit the pipeline uses).
 
 #### Latency
 

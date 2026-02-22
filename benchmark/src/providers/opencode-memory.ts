@@ -33,7 +33,7 @@ const ENUMERATION_TYPES = [
 
 // Detects enumeration intent: queries that enumerate facts across all sessions.
 // These cannot be answered by top-K semantic similarity alone when the corpus spans 25+ sessions.
-const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
+const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w+|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
 
 export class OpencodeMemoryProvider implements Provider {
   readonly name = "opencode-memory";
@@ -108,7 +108,7 @@ export class OpencodeMemoryProvider implements Provider {
    *   session-continuity → 0.5  (temporal queries need recency boost)
    *   all others         → 0.0  (pure semantic; superseding already handles knowledge-update)
    */
-  async search(query: string, runTag: string, limit = 8, questionType?: string): Promise<SearchResult[]> {
+  async search(query: string, runTag: string, limit = 20, questionType?: string): Promise<SearchResult[]> {
     const RECENCY_WEIGHTS: Record<string, number> = {
       "session-continuity": 0.5,
     };
@@ -129,6 +129,10 @@ export class OpencodeMemoryProvider implements Provider {
         query,
         user_id: runTag,
         limit,
+        // NOTE: benchmark intentionally uses 0.2 (vs plugin default 0.45) to avoid
+        // artificially constraining recall during evaluation. All runs use the same
+        // threshold, so cross-run comparisons are valid — but absolute Hit@K numbers
+        // will be higher than production recall at 0.45.
         threshold: 0.2,
         recency_weight,
         ...(types ? { types } : {}),
