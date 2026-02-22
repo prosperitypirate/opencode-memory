@@ -99,12 +99,16 @@ async function main() {
     printResult(result);
 
     // ── Cleanup test memories from backend ──────────────────────────────────
+    // Auto-save fires asynchronously after opencode exits — wait for it to
+    // settle before deleting, then do a second pass to catch late writes.
     if (result.testDirs && result.testDirs.length > 0) {
       const { cleanupTestDirs } = await import("./memory-api.js");
-      const deleted = await cleanupTestDirs(result.testDirs);
-      if (deleted > 0) {
-        console.log(`       ${DIM}  ✓ Cleaned up ${deleted} test memories from backend${RESET}`);
-      }
+      // First pass — catch memories already written
+      let deleted = await cleanupTestDirs(result.testDirs);
+      // Wait for auto-save to settle then second pass
+      await Bun.sleep(15_000);
+      deleted += await cleanupTestDirs(result.testDirs);
+      console.log(`       ${DIM}  ✓ Cleaned up ${deleted} test memories from backend${RESET}`);
     }
     console.log();
   }
