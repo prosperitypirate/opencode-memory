@@ -55,7 +55,7 @@ jobs:
             - Consistency with existing patterns in the codebase
 
             Also check PR hygiene and flag as Warning if any of these are missing:
-            - At least one label applied (bug, enhancement, memory-quality, chore, ci, backend, frontend, plugin, benchmark, security, documentation)
+            - At least one label applied (bug, enhancement, memory-quality, chore, ci, backend, frontend, plugin, benchmark, security, documentation, research)
             - A related issue linked (e.g. "Closes #N") — not required for chore/ci/docs PRs
             - PR description is not empty
 
