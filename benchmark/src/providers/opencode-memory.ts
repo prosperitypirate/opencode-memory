@@ -119,8 +119,13 @@ export class OpencodeMemoryProvider implements Provider {
     // This ensures "list all env vars / every preference / complete history" queries
     // retrieve facts from every session, not just the top-K semantically similar ones.
     const isEnumeration = ENUMERATION_REGEX.test(query);
-    // isWideSynthesis: dataset label used in benchmark; also apply the same text heuristic
-    // the plugin uses so both paths stay in sync. Label takes precedence when available.
+    // isWideSynthesis: benchmark activates on the dataset label (all 25 cross-synthesis
+    // questions). The plugin cannot use labels — it uses the text heuristic below instead.
+    // This means synthesis questions whose text doesn't match the heuristic get hybrid
+    // retrieval here but plain top-K in production. Combined with threshold=0.2 vs 0.45,
+    // the benchmark +12pp likely overstates real-world gain for non-enumeration synthesis
+    // questions. The heuristic is also applied here as a fallback so both stay in sync
+    // for the questions it does cover.
     const isWideSynthesis = questionType === "cross-session-synthesis" ||
       /\b(both\s+(projects?|the)|across\s+both|end[\s-]to[\s-]end|how\s+has.{0,30}evolved|sequence\s+of.{0,20}decisions?)\b/i.test(query);
     const types = (isEnumeration || isWideSynthesis) ? ENUMERATION_TYPES : undefined;

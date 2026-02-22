@@ -154,21 +154,32 @@ def check_and_supersede(
 
 def get_memories_by_type(user_id: str, memory_type: str) -> list[dict]:
     """Return all non-superseded memories of *memory_type* for *user_id*, sorted by created_at asc."""
+    return get_memories_by_types(user_id, [memory_type])
+
+
+def get_memories_by_types(user_id: str, memory_types: list[str]) -> list[dict]:
+    """Return all non-superseded memories matching any of *memory_types* for *user_id*.
+
+    Uses a single table scan regardless of how many types are requested — callers
+    should prefer this over calling get_memories_by_type() in a loop.
+    Sorted by created_at asc.
+    """
     try:
         if db.table.count_rows() == 0:
             return []
         import pandas as pd  # noqa: F401 — imported for type coercion
         df   = db.table.to_pandas()
         rows = df[df["user_id"] == user_id].to_dict(orient="records")
+        type_set = set(memory_types)
         typed = [
             r for r in rows
-            if json.loads(r.get("metadata_json") or "{}").get("type") == memory_type
-            and not r.get("superseded_by")  # exclude superseded memories
+            if json.loads(r.get("metadata_json") or "{}").get("type") in type_set
+            and not r.get("superseded_by")
         ]
         typed.sort(key=lambda r: r.get("created_at") or "")
         return typed
     except Exception as e:
-        logger.debug("get_memories_by_type error: %s", e)
+        logger.debug("get_memories_by_types error: %s", e)
         return []
 
 

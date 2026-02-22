@@ -23,7 +23,7 @@ from ..config import DEDUP_DISTANCE, STRUCTURAL_DEDUP_DISTANCE, STRUCTURAL_TYPES
 from ..embedder import embed
 from ..extractor import extract_memories
 from ..models import AddMemoryRequest, SearchMemoryRequest
-from ..store import apply_aging_rules, check_and_supersede, find_duplicate, get_memories_by_type
+from ..store import apply_aging_rules, check_and_supersede, find_duplicate, get_memories_by_types
 
 logger = logging.getLogger("memory-server")
 router = APIRouter()
@@ -283,36 +283,36 @@ async def search_memories(req: SearchMemoryRequest):
         # normal queries are unaffected.
         if req.types:
             seen_ids = {r["id"] for r in results}
-            # Cap on the combined extras list (not per-type). With req.limit=20 and
-            # 5 enumeration types, total response can reach 20 (semantic) + 20 (extras)
-            # = 40 memories. This is intentional: enumeration queries need full coverage.
+            # Cap on the combined extras list. With req.limit=20 and 5 enumeration types,
+            # total response can reach 20 (semantic) + 20 (extras) = 40 memories max.
+            # This is intentional: enumeration queries need full coverage across sessions.
             total_extras_limit = req.limit or 20
             type_extras: list[dict] = []
 
-            for mem_type in req.types:
-                type_rows = await _in_thread(get_memories_by_type, req.user_id, mem_type)
-                for tr in type_rows:
-                    # Skip: already in semantic results, superseded, or extra cap reached
-                    if tr["id"] in seen_ids:
-                        continue
-                    if tr.get("superseded_by"):
-                        continue
-                    meta = json.loads(tr.get("metadata_json") or "{}")
-                    d = _extract_date(tr)
-                    type_extras.append({
-                        "id":         tr["id"],
-                        "memory":     tr["memory"],
-                        "chunk":      tr.get("chunk") or "",
-                        "score":      0.25,  # base score — below any semantic hit
-                        "metadata":   meta,
-                        "created_at": tr.get("created_at"),
-                        "date":       d.isoformat() if d else None,
-                    })
-                    seen_ids.add(tr["id"])
+            # Single table scan across all requested types — avoids N scans per query.
+            # get_memories_by_types already filters superseded and sorts by created_at.
+            all_type_rows = await _in_thread(get_memories_by_types, req.user_id, req.types)
+            for tr in all_type_rows:
+                if tr["id"] in seen_ids:
+                    continue
+                meta = json.loads(tr.get("metadata_json") or "{}")
+                d = _extract_date(tr)
+                type_extras.append({
+                    "id":         tr["id"],
+                    "memory":     tr["memory"],
+                    "chunk":      tr.get("chunk") or "",
+                    "score":      0.25,  # base score — below any semantic hit
+                    "metadata":   meta,
+                    "created_at": tr.get("created_at"),
+                    "date":       d.isoformat() if d else None,
+                })
+                seen_ids.add(tr["id"])
+                if len(type_extras) >= total_extras_limit:
+                    break  # early exit — cap reached, no need to accumulate further
 
-            # Sort extras by recency (most recent first) and cap before appending
+            # Sort extras by recency (most recent first) before appending
             type_extras.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-            results = results + type_extras[:total_extras_limit]
+            results = results + type_extras
             # Final sort: semantic hits (score > 0.25) still precede type-filtered extras
             results = sorted(results, key=lambda r: r["score"], reverse=True)
 
