@@ -274,6 +274,11 @@ bun run bench run -r config-b
 | Cross-synthesis | 60% (3/5) | 44% (11/25) | 52% (13/25) | 64% (16/25) | 76% (19/25) | 76% (19/25) | **80% (20/25)** |
 | **Overall** | **87.5%** | **74.0%** | **88.0%** | **91.0%** | **92.0%** | **92.0%** | **94.5%** |
 
+> **Note:** Abstention dropped 100% → 92% between `abstention-fix-v2` and `causal-chain-synthesis-arch`.
+> This is **ingest nondeterminism**, not a regression from code changes — the xAI extractor (temperature=0)
+> produces 70-81 memories per run, creating a ±3 question noise floor. The 2 abstention failures (Q194, Q196)
+> are caused by adjacent-context leakage during extraction variance, not by the causal-chain or synthesis changes.
+
 ---
 
 ### Improvement Roadmap

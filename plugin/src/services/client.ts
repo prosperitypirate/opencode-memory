@@ -23,8 +23,9 @@ const SYNTHESIS_TYPES = [
 ];
 
 // Detects enumeration intent in a user query.
-// When triggered, the backend fetches all memories of ENUMERATION_TYPES in addition
-// to the top-K semantic results — giving complete coverage for "list all X" queries.
+// When such intent is detected, the backend fetches all memories from the appropriate
+// memory-type set (ENUMERATION_TYPES for pure enumeration, SYNTHESIS_TYPES for synthesis)
+// in addition to the top-K semantic results — giving complete coverage for "list all X" queries.
 const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w+|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
 
 // ── Server response types ─────────────────────────────────────────────────────
