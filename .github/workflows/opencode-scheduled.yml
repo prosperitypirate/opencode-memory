@@ -36,7 +36,7 @@ jobs:
           model: anthropic/claude-sonnet-4-6
           share: false
           prompt: |
-            ${{ github.event.inputs.task != '' && github.event.inputs.task != 'Run the full weekly scan' && format('Manual task requested: {0}', github.event.inputs.task) || 'Weekly automated scan for the opencode-memory project.' }}
+            ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.task != '' && github.event.inputs.task != 'Run the full weekly scan' && format('Manual task requested: {0}\n\nAfter completing this task, also run the weekly scan below.\n\n', github.event.inputs.task) || '' }}Weekly automated scan for the opencode-memory project.
 
             Perform the following checks across the entire codebase
             (plugin/, backend/, frontend/, memory server):
