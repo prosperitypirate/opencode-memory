@@ -9,6 +9,17 @@ import type {
 const TIMEOUT_MS = 30000;
 const MAX_CONVERSATION_CHARS = 100_000;
 
+// Memory types included in hybrid enumeration retrieval — matches backend ENUMERATION_TYPES.
+// Excludes session-summary (cross-project narrative contamination) and single-entry types.
+const ENUMERATION_TYPES = [
+  "tech-context", "preference", "learned-pattern", "error-solution", "project-config",
+];
+
+// Detects enumeration intent in a user query.
+// When triggered, the backend fetches all memories of ENUMERATION_TYPES in addition
+// to the top-K semantic results — giving complete coverage for "list all X" queries.
+const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
+
 // ── Server response types ─────────────────────────────────────────────────────
 
 interface MemoryRecord {
@@ -92,6 +103,12 @@ export class MemoryClient {
   async searchMemories(query: string, containerTag: string, recencyWeight?: number) {
     log("searchMemories: start", { containerTag });
     try {
+      // For enumeration queries ("list all env vars", "every preference"), fetch all
+      // memories of relevant types in addition to top-K semantic results. This prevents
+      // facts from low-ranking sessions being silently missed on broad coverage questions.
+      const isEnumeration = ENUMERATION_REGEX.test(query);
+      const types = isEnumeration ? ENUMERATION_TYPES : undefined;
+
       const data = await withTimeout(
         memoryFetch("/memories/search", {
           method: "POST",
@@ -103,6 +120,7 @@ export class MemoryClient {
             ...(recencyWeight !== undefined && recencyWeight > 0
               ? { recency_weight: recencyWeight }
               : {}),
+            ...(types ? { types } : {}),
           }),
         }),
         TIMEOUT_MS
