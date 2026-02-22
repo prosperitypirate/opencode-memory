@@ -22,7 +22,12 @@ Extract memories from BOTH perspectives — not just stated facts, but also:
 - Tool/command preferences (e.g. "use bun not npm", "run tests with X flag")
 
 Rules:
-- Each memory = one self-contained, searchable fact (1-2 sentences max)
+- Each memory = one self-contained, searchable fact (1-2 sentences max for simple facts)
+- For bug fixes and debugging sequences, preserve the CAUSAL CHAIN: what broke → why it
+  broke → how it was fixed. These may need 2-3 sentences. A compressed one-liner like
+  "fixed Stripe webhook" is useless; "Starlette consumed the request body before Stripe's
+  construct_event() could read the raw bytes for signature verification — fixed by caching
+  raw body in middleware" is reusable next session.
 - Write from the perspective of what helps the agent next session
 - Include the "why" not just the "what" — context makes memories useful
 - Prefer specific over vague

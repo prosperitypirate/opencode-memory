@@ -18,17 +18,19 @@ import type {
 import { log } from "../utils/logger.js";
 import { emit } from "../live/emitter.js";
 
-// Memory types included in hybrid enumeration retrieval.
-// When a query is detected as enumeration ("list all X", "every Y"), all memories of
-// these types are fetched and merged with semantic results — ensuring broad "list everything"
-// queries get complete coverage regardless of how many sessions produced the facts.
-//
-// Deliberately excludes session-summary, project-brief, progress, architecture:
-//   session-summary — long multi-project narratives caused Q177 to describe the WRONG
-//     project when session-summaries from project B were injected into a project A query.
-//   The remaining excluded types are low-value for enumeration (single-entry or too broad).
+// Memory types included in hybrid enumeration retrieval ("list all X", "every Y").
+// Narrow set for pure enumeration queries — excludes architecture (too broad, adds noise)
+// and session-summary (cross-project narrative contamination, caused Q177 regression).
 const ENUMERATION_TYPES = [
   "tech-context", "preference", "learned-pattern", "error-solution", "project-config",
+];
+
+// Wider set for cross-project synthesis queries ("across both projects", "overall state").
+// Includes architecture because synthesis queries often need component/endpoint/chart details
+// that are stored as architecture-type memories.
+// Mirrors plugin/src/services/client.ts — keep both in sync.
+const SYNTHESIS_TYPES = [
+  ...ENUMERATION_TYPES, "architecture",
 ];
 
 // Detects enumeration intent: queries that enumerate facts across all sessions.
@@ -128,7 +130,10 @@ export class OpencodeMemoryProvider implements Provider {
     // for the questions it does cover.
     const isWideSynthesis = questionType === "cross-session-synthesis" ||
       /\b(both\s+(projects?|the)|across\s+both|end[\s-]to[\s-]end|how\s+has.{0,30}evolved|sequence\s+of.{0,20}decisions?)\b/i.test(query);
-    const types = (isEnumeration || isWideSynthesis) ? ENUMERATION_TYPES : undefined;
+    // Synthesis queries get the wider type set (includes architecture);
+    // pure enumeration queries stay narrow to avoid noise.
+    // Mirrors plugin/src/services/client.ts — keep both in sync.
+    const types = isWideSynthesis ? SYNTHESIS_TYPES : isEnumeration ? ENUMERATION_TYPES : undefined;
 
     const res = await fetch(`${this.baseUrl}/memories/search`, {
       method: "POST",

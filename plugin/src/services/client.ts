@@ -9,15 +9,23 @@ import type {
 const TIMEOUT_MS = 30000;
 const MAX_CONVERSATION_CHARS = 100_000;
 
-// Memory types included in hybrid enumeration retrieval — matches backend ENUMERATION_TYPES.
-// Excludes session-summary (cross-project narrative contamination) and single-entry types.
+// Memory types included in hybrid enumeration retrieval ("list all X", "every preference").
+// Narrow set: excludes architecture (too broad for pure enumeration) and session-summary
+// (cross-project narrative contamination).
 const ENUMERATION_TYPES = [
   "tech-context", "preference", "learned-pattern", "error-solution", "project-config",
 ];
 
+// Wider set for cross-project synthesis ("across both projects", "overall state").
+// Includes architecture because synthesis queries often need component/endpoint details.
+const SYNTHESIS_TYPES = [
+  ...ENUMERATION_TYPES, "architecture",
+];
+
 // Detects enumeration intent in a user query.
-// When triggered, the backend fetches all memories of ENUMERATION_TYPES in addition
-// to the top-K semantic results — giving complete coverage for "list all X" queries.
+// When such intent is detected, the backend fetches all memories from the appropriate
+// memory-type set (ENUMERATION_TYPES for pure enumeration, SYNTHESIS_TYPES for synthesis)
+// in addition to the top-K semantic results — giving complete coverage for "list all X" queries.
 const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w+|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
 
 // ── Server response types ─────────────────────────────────────────────────────
@@ -110,7 +118,9 @@ export class MemoryClient {
       // isWideSynthesis mirrors the benchmark provider — keep both in sync.
       const isEnumeration = ENUMERATION_REGEX.test(query);
       const isWideSynthesis = /\b(both\s+(projects?|the)|across\s+both|end[\s-]to[\s-]end|how\s+has.{0,30}evolved|sequence\s+of.{0,20}decisions?)\b/i.test(query);
-      const types = (isEnumeration || isWideSynthesis) ? ENUMERATION_TYPES : undefined;
+      // Synthesis queries get the wider type set (includes architecture);
+      // pure enumeration queries stay narrow to avoid noise.
+      const types = isWideSynthesis ? SYNTHESIS_TYPES : isEnumeration ? ENUMERATION_TYPES : undefined;
 
       const data = await withTimeout(
         memoryFetch("/memories/search", {
