@@ -46,6 +46,8 @@ export interface Memory {
   metadata: { type?: MemoryType };
   created_at: string;
   updated_at: string;
+  /** Set by relational versioning when a newer memory supersedes this one */
+  superseded_by?: string | null;
 }
 
 /** Compute the project tag for a given directory path (matches plugin's getTags logic) */
@@ -100,5 +102,51 @@ export async function isBackendReady(): Promise<boolean> {
     return data.ready === true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Delete all memories for a test directory from the backend.
+ * Called after each scenario to keep the memory store clean.
+ * Returns the number of memories deleted.
+ */
+export async function cleanupTestDir(dir: string): Promise<number> {
+  const projectTag = projectTagForDir(dir);
+  return cleanupTag(projectTag);
+}
+
+/** Delete all memories for multiple test directories */
+export async function cleanupTestDirs(dirs: string[]): Promise<number> {
+  let total = 0;
+  for (const dir of dirs) {
+    total += await cleanupTestDir(dir);
+  }
+  return total;
+}
+
+/** Delete all memories for a given project tag */
+async function cleanupTag(projectTag: string): Promise<number> {
+  try {
+    const url = `${BACKEND}/memories?user_id=${encodeURIComponent(projectTag)}&limit=200&include_superseded=true`;
+    const res = await fetch(url);
+    if (!res.ok) return 0;
+    const data = (await res.json()) as { results: Memory[] };
+    const memories = data.results ?? [];
+
+    let deleted = 0;
+    for (const m of memories) {
+      try {
+        const delRes = await fetch(
+          `${BACKEND}/memories/${m.id}?user_id=${encodeURIComponent(projectTag)}`,
+          { method: "DELETE" }
+        );
+        if (delRes.ok) deleted++;
+      } catch {
+        // best-effort cleanup — ignore individual failures
+      }
+    }
+    return deleted;
+  } catch {
+    return 0;
   }
 }

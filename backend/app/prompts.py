@@ -37,8 +37,14 @@ Rules:
     "tech-context"    — Tech stack, setup, constraints, dependencies, tool preferences
     "product-context" — Why the project exists, problems solved, UX goals
     "session-summary" — What was worked on this session, decisions made, next steps
-    "progress"        — Current state: what works, what's broken, what's in progress
-    "error-solution"  — Bug fixes, gotchas, approaches that failed and why
+    "progress"        — Project status / milestone snapshot: version shipped, features completed,
+                        what is currently in progress, and what comes next. Use this for any
+                        "status update" or "we are at vX.Y" style information. Do NOT use
+                        "error-solution" for this — even if some components are described as
+                        working or not yet working.
+    "error-solution"  — Specific bug fixes, debugging gotchas, or approaches that FAILED and why.
+                        Only use this for concrete problems that were investigated and resolved
+                        (or deliberately abandoned). Do NOT use for general project status updates.
     "preference"      — Cross-project patterns, personal preferences, workflow habits
     "learned-pattern" — Technical patterns, reusable solutions, established conventions
 
