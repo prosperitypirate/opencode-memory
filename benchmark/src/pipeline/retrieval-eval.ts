@@ -4,6 +4,11 @@
  * For each question, a single LLM call evaluates all top-K search results
  * for relevance, then computes Hit@K, Precision@K, F1@K, MRR, and NDCG.
  *
+ * K is derived dynamically from the number of results actually retrieved —
+ * so if the pipeline retrieves 20, metrics are reported at K=20. This keeps
+ * the evaluation K aligned with the retrieval K regardless of what limit is
+ * configured.
+ *
  * Designed to run in parallel with the answer judge:
  *   Promise.all([judge(answerPrompt, config), calculateRetrievalMetrics(...)])
  *
@@ -15,8 +20,6 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { SearchResult, RetrievalMetrics } from "../types.js";
 import type { Config } from "../utils/config.js";
-
-const K = 8;
 
 function createModel(config: Config) {
   if (config.anthropicApiKey && config.judgeModel.includes("claude")) {
@@ -122,7 +125,8 @@ export async function calculateRetrievalMetrics(
   results: SearchResult[],
   config: Config
 ): Promise<RetrievalMetrics> {
-  const k = Math.min(K, results.length > 0 ? K : 0);
+  // K matches whatever was actually retrieved — keeps evaluation aligned with retrieval
+  const K = results.length;
 
   // No results — return zero metrics without an LLM call
   if (results.length === 0) {
@@ -132,12 +136,12 @@ export async function calculateRetrievalMetrics(
       f1AtK: 0,
       mrr: 0,
       ndcg: 0,
-      k: K,
+      k: 0,
       relevanceScores: [],
     };
   }
 
-  const topK = results.slice(0, K);
+  const topK = results; // evaluate all retrieved results
   const prompt = buildRelevancePrompt(question, groundTruth, topK, K);
 
   let relevanceScores: number[];
@@ -174,5 +178,5 @@ export async function calculateRetrievalMetrics(
 
   const ndcg = computeNDCG(relevanceScores);
 
-  return { hitAtK, precisionAtK, f1AtK, mrr, ndcg, k: K, relevanceScores };
+  return { hitAtK, precisionAtK, f1AtK, mrr, ndcg, k: topK.length, relevanceScores };
 }

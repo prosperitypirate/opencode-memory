@@ -48,8 +48,8 @@ const DEFAULTS: Required<
   Omit<MemoryConfig, "memoryBaseUrl" | "userContainerTag" | "projectContainerTag">
 > = {
   similarityThreshold: 0.45,
-  maxMemories: 10,
-  maxProjectMemories: 10,
+  maxMemories: 20,        // raised from 10 — matches benchmark K=20 for consistent recall
+  maxProjectMemories: 20, // raised from 10 — matches benchmark K=20
   maxStructuredMemories: 30,
   maxProfileItems: 5,
   injectProfile: true,
