@@ -242,11 +242,11 @@ The agent sees this before generating any response:
 
 ## Progress & Status
 - Memory server running at localhost:8020, dashboard at localhost:3030
-- Benchmark at 91.0% (182/200); cross-synthesis is primary remaining gap at 64%
+- Benchmark at 94.5% (189/200); cross-synthesis at 80% is primary remaining gap
 
 ## Last Session
-- Raised retrieval K from 8 to 20; cross-synthesis improved 52% → 64% (+12pp)
-- Updated both READMEs to reflect k20-synthesis-fix results; changes not yet committed
+- Improved extraction prompt to preserve causal chains for error-solution memories
+- Added architecture to synthesis retrieval types; cross-synthesis 76% → 80%
 
 ## User Preferences
 - Use bun not npm for all plugin builds and installs
@@ -329,14 +329,14 @@ Memory quality is measured by [DevMemBench](./benchmark/README.md) — a coding-
 ```
 tech-stack        ████████████████████ 100%  (25/25)  ✓
 preference        ████████████████████ 100%  (25/25)  ✓
-error-solution    ███████████████████░  96%  (24/25)  ✓
-architecture      ██████████████████░░  92%  (23/25)  ✓
+architecture      ████████████████████ 100%  (25/25)  ✓
+error-solution    ████████████████████ 100%  (25/25)  ✓
 session-cont.     ██████████████████░░  92%  (23/25)  ✓
 knowledge-update  ██████████████████░░  92%  (23/25)  ✓
 abstention        ██████████████████░░  92%  (23/25)  ✓
-cross-synthesis   ████████████░░░░░░░░  64%  (16/25)  ⚠  primary remaining gap
+cross-synthesis   ████████████████░░░░  80%  (20/25)  ⚠  primary remaining gap
 ──────────────────────────────────────────────────────
-Overall           91.0%  (182/200)
+Overall           94.5%  (189/200)
 ```
 
 Each technique improvement is tracked against the benchmark:
@@ -348,6 +348,8 @@ Each technique improvement is tracked against the benchmark:
 | Temporal grounding — recency boost + date in context | session-continuity 20% → 60% |
 | Natural question phrasing (v2-natural) | session-continuity 24% → 88% (+64pp) |
 | K=20 retrieval (k20-synthesis-fix) | cross-synthesis 52% → 64% (+12pp), overall 88% → 91% |
+| Hybrid enumeration routing | cross-synthesis 64% → 76% (+12pp), overall 91% → 92% |
+| Causal-chain extraction + architecture synthesis | architecture/error-solution → 100%, overall 92% → 94.5% |
 
 See [`benchmark/README.md`](./benchmark/README.md) for full results history and how to run it yourself.
 
