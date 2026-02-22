@@ -46,6 +46,8 @@ export interface Memory {
   metadata: { type?: MemoryType };
   created_at: string;
   updated_at: string;
+  /** Set by relational versioning when a newer memory supersedes this one */
+  superseded_by?: string | null;
 }
 
 /** Compute the project tag for a given directory path (matches plugin's getTags logic) */

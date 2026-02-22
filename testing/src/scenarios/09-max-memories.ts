@@ -138,27 +138,27 @@ export async function run(): Promise<ScenarioResult> {
 
     // ── Session 9: broad recall query ─────────────────────────────────────────
     details.push("Session 9: broad recall query to verify deep retrieval…");
-    const s7 = await runOpencode(
+    const s9 = await runOpencode(
       "Give me a comprehensive overview of the helix project — " +
       "cover the language and framework, infrastructure, auth approach, " +
       "testing setup, observability, and any key architecture decisions.",
       dir,
       { timeoutMs: 120_000 }
     );
-    details.push(`  exitCode: ${s7.exitCode}, duration: ${(s7.durationMs / 1000).toFixed(1)}s`);
-    if (s7.exitCode !== 0) {
-      return { id, name, status: "FAIL", durationMs: Date.now() - start, details, error: `Session 7 failed: ${s7.stderr.slice(0, 200)}` };
+    details.push(`  exitCode: ${s9.exitCode}, duration: ${(s9.durationMs / 1000).toFixed(1)}s`);
+    if (s9.exitCode !== 0) {
+      return { id, name, status: "FAIL", durationMs: Date.now() - start, details, error: `Session 9 failed: ${s9.stderr.slice(0, 200)}` };
     }
 
-    const response = s7.text.toLowerCase();
-    details.push(`  response length: ${s7.text.length} chars`);
-    details.push(`  preview: ${s7.text.slice(0, 400)}`);
+    const response = s9.text.toLowerCase();
+    details.push(`  response length: ${s9.text.length} chars`);
+    details.push(`  preview: ${s9.text.slice(0, 400)}`);
 
     // ── Assertions ─────────────────────────────────────────────────────────────
     // Facts from early sessions (1, 2) AND late sessions (7, 8) must both appear.
     // If K were still 10, early session facts would likely be pushed out.
     const assertions = [
-      { label: "Response not empty",                                        pass: s7.text.length > 100 },
+      { label: "Response not empty",                                        pass: s9.text.length > 100 },
       { label: "≥8 memories stored (K=20 load condition met)",              pass: totalMemories.length >= 8 },
       { label: "Recalls Go + Chi (session 1 — early)",                      pass: /\bgo\b|chi/i.test(response) },
       { label: "Recalls CockroachDB (session 1 — early)",                   pass: /cockroach/i.test(response) },
@@ -166,7 +166,7 @@ export async function run(): Promise<ScenarioResult> {
       { label: "Recalls PASETO or Ed25519 (session 3)",                     pass: /paseto|ed25519/i.test(response) },
       { label: "Recalls OpenTelemetry or Honeycomb (session 5)",            pass: /opentelemetry|honeycomb|otel/i.test(response) },
       { label: "Recalls Redis idempotency or Protobuf (session 6)",         pass: /redis|protobuf|buf\.build|idempoten/i.test(response) },
-      { label: "Recalls error wrapping or DI conventions (session 7—late)", pass: /fmt\.errorf|inject|constructor|global var/i.test(response) },
+      { label: "Recalls error wrapping or DI conventions (session 7—late)", pass: /fmt\.errorf|dependency.?inject|constructor.?function|no.?global/i.test(response) },
       { label: "Recalls v0.7.2 or WebSocket milestone (session 8 — late)",  pass: /v0\.7|websocket|2\.1m|pagerduty/i.test(response) },
     ];
 
@@ -179,7 +179,7 @@ export async function run(): Promise<ScenarioResult> {
       status: assertions.every((a) => a.pass) ? "PASS" : "FAIL",
       durationMs: Date.now() - start,
       details,
-      evidence: { totalMemories: totalMemories.length, responsePreview: s7.text.slice(0, 600) },
+      evidence: { totalMemories: totalMemories.length, responsePreview: s9.text.slice(0, 600) },
       testDirs: [dir],
     };
 

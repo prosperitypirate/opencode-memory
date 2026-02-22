@@ -89,7 +89,7 @@ export async function run(): Promise<ScenarioResult> {
       m.memory.toLowerCase().includes("sqlalchemy")
     );
     const sqlalchemySuperseded = sqlalchemyMems.every(
-      (m) => (m as any).superseded_by != null
+      (m) => m.superseded_by != null
     );
     details.push(`  SQLAlchemy memories remaining: ${sqlalchemyMems.length}`);
     details.push(`  SQLAlchemy superseded: ${sqlalchemySuperseded}`);

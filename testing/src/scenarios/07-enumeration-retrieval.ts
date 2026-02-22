@@ -98,7 +98,7 @@ export async function run(): Promise<ScenarioResult> {
       { label: "Recalls tabs preference (session 1)",                     pass: /tab/i.test(response) },
       { label: "Recalls Zod preference (session 1)",                      pass: /zod/i.test(response) },
       { label: "Recalls pnpm preference (session 2)",                     pass: /pnpm/i.test(response) },
-      { label: "Recalls parameterised queries preference (session 2)",    pass: /paramteri|parameteris|parameteriz|paramtri|prepared|string interp/i.test(response) },
+      { label: "Recalls parameterised queries preference (session 2)",    pass: /parameteriz[ed]?|parameteris[ed]?|prepared|string.?interp/i.test(response) },
       { label: "At least 2 memories in backend",                          pass: afterS2.length >= 2 },
     ];
 

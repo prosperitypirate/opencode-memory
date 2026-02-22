@@ -16,7 +16,10 @@
  * Note: the plugin scopes retrieval to the current project's namespace by default.
  * Cross-synthesis only works if the agent's memory context spans both projects,
  * which happens when the user works in the same user session across projects.
- * Here we verify the isWideSynthesis heuristic fires and the answer is coherent.
+ * This tests "best-effort" synthesis — the isWideSynthesis heuristic fires and
+ * includes user-scoped preference memories that span projects. It does NOT test
+ * guaranteed cross-project retrieval; the answer may be coherent even if only
+ * one project's memories are in context.
  */
 
 import { createTestDirs, runOpencode } from "../opencode.js";
