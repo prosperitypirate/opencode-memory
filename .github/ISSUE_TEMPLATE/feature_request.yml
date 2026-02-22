@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the motivation. What's missing or painful today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should change? Include design notes if you have them.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Backend (FastAPI / LanceDB)
+        - Plugin (OpenCode integration)
+        - Frontend (dashboard)
+        - Benchmark
+        - CI/CD
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Estimated effort
+      options:
+        - Small (hours)
+        - Medium (days)
+        - Large (week+)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

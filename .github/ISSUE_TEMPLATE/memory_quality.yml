@@ -1,0 +1,57 @@
+name: Memory quality
+description: Retrieval failures, wrong answers, hallucinations, or benchmark regressions
+labels: ["memory-quality"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What went wrong?
+      description: Describe the memory quality issue — wrong retrieval, missed fact, hallucination, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Benchmark evidence
+      description: |
+        Paste relevant question IDs, run names, scores, or retrieval metrics.
+        e.g. "Q194 fails in run `abstention-fix-v2`, retrieval P=0/8"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question category
+      options:
+        - cross-synthesis
+        - abstention
+        - architecture
+        - session-continuity
+        - knowledge-update
+        - error-solution
+        - preference
+        - tech-stack
+        - Other / unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: root_cause
+    attributes:
+      label: Suspected root cause
+      options:
+        - Retrieval gap (right memories not ranking)
+        - Ingest gap (fact never extracted)
+        - LLM answer failure (memories present but answer wrong)
+        - Abstention boundary (model infers instead of saying I don't know)
+        - Knowledge update (stale memory not superseded)
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix
+    attributes:
+      label: Proposed fix (optional)
