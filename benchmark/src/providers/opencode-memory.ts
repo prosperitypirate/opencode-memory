@@ -119,7 +119,10 @@ export class OpencodeMemoryProvider implements Provider {
     // This ensures "list all env vars / every preference / complete history" queries
     // retrieve facts from every session, not just the top-K semantically similar ones.
     const isEnumeration = ENUMERATION_REGEX.test(query);
-    const isWideSynthesis = questionType === "cross-session-synthesis";
+    // isWideSynthesis: dataset label used in benchmark; also apply the same text heuristic
+    // the plugin uses so both paths stay in sync. Label takes precedence when available.
+    const isWideSynthesis = questionType === "cross-session-synthesis" ||
+      /\b(both\s+(projects?|the)|across\s+both|end[\s-]to[\s-]end|how\s+has.{0,30}evolved|sequence\s+of.{0,20}decisions?)\b/i.test(query);
     const types = (isEnumeration || isWideSynthesis) ? ENUMERATION_TYPES : undefined;
 
     const res = await fetch(`${this.baseUrl}/memories/search`, {

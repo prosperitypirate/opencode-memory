@@ -283,7 +283,10 @@ async def search_memories(req: SearchMemoryRequest):
         # normal queries are unaffected.
         if req.types:
             seen_ids = {r["id"] for r in results}
-            extra_limit = req.limit or 20  # cap type-filtered extras at same as semantic limit
+            # Cap on the combined extras list (not per-type). With req.limit=20 and
+            # 5 enumeration types, total response can reach 20 (semantic) + 20 (extras)
+            # = 40 memories. This is intentional: enumeration queries need full coverage.
+            total_extras_limit = req.limit or 20
             type_extras: list[dict] = []
 
             for mem_type in req.types:
@@ -309,7 +312,7 @@ async def search_memories(req: SearchMemoryRequest):
 
             # Sort extras by recency (most recent first) and cap before appending
             type_extras.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-            results = results + type_extras[:extra_limit]
+            results = results + type_extras[:total_extras_limit]
             # Final sort: semantic hits (score > 0.25) still precede type-filtered extras
             results = sorted(results, key=lambda r: r["score"], reverse=True)
 

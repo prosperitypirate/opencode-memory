@@ -103,11 +103,14 @@ export class MemoryClient {
   async searchMemories(query: string, containerTag: string, recencyWeight?: number) {
     log("searchMemories: start", { containerTag });
     try {
-      // For enumeration queries ("list all env vars", "every preference"), fetch all
-      // memories of relevant types in addition to top-K semantic results. This prevents
-      // facts from low-ranking sessions being silently missed on broad coverage questions.
+      // For enumeration queries ("list all env vars", "every preference") OR cross-project
+      // synthesis questions, fetch all memories of relevant types in addition to top-K
+      // semantic results. This prevents facts from low-ranking sessions being silently
+      // missed on broad coverage questions.
+      // isWideSynthesis mirrors the benchmark provider — keep both in sync.
       const isEnumeration = ENUMERATION_REGEX.test(query);
-      const types = isEnumeration ? ENUMERATION_TYPES : undefined;
+      const isWideSynthesis = /\b(both\s+(projects?|the)|across\s+both|end[\s-]to[\s-]end|how\s+has.{0,30}evolved|sequence\s+of.{0,20}decisions?)\b/i.test(query);
+      const types = (isEnumeration || isWideSynthesis) ? ENUMERATION_TYPES : undefined;
 
       const data = await withTimeout(
         memoryFetch("/memories/search", {

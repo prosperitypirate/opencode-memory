@@ -61,3 +61,7 @@ jobs:
             Post a concise review comment on the PR with findings grouped by severity:
             **Critical**, **Warning**, **Suggestion**. Skip sections with no findings.
             If the PR looks good, say so briefly.
+
+            IMPORTANT: Do not include any preamble about GitHub token permissions,
+            authentication status, or environment limitations. Post the review
+            content directly without any meta-commentary about tooling.
