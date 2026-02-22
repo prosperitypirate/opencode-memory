@@ -1,0 +1,60 @@
+name: opencode-review
+
+on:
+  # Auto-review every PR on open / update
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+  # On-demand: comment "/opencode <task>" or "/oc <task>" on any PR or issue
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Rules:
+    #   pull_request  → skip drafts, always run otherwise
+    #   issue_comment / pull_request_review_comment → only OWNER, MEMBER, or
+    #   explicit COLLABORATOR may trigger; blocks random internet users
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      (github.event_name != 'pull_request' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+
+    permissions:
+      id-token: write    # Required for OpenCode GitHub App token exchange
+      contents: read     # Checkout
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: anomalyco/opencode/github@latest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          model: anthropic/claude-sonnet-4-6
+          share: false
+          prompt: |
+            Review this pull request for the opencode-memory project (a self-hosted
+            AI coding assistant memory system using LanceDB + Voyage AI embeddings).
+
+            Check for:
+            - Correctness and logic bugs
+            - TypeScript type safety (plugin/ uses @opencode-ai/plugin SDK)
+            - Python async/await correctness and FastAPI patterns (backend/)
+            - React/TypeScript component issues (frontend/)
+            - Memory system correctness: embedding storage, retrieval thresholds,
+              memory type taxonomy, session-summary aging rules
+            - Security issues (secrets, injection, auth)
+            - Performance concerns (LanceDB query efficiency, embedding batch sizes)
+            - Missing error handling or edge cases
+            - Consistency with existing patterns in the codebase
+
+            Post a concise review comment on the PR with findings grouped by severity:
+            **Critical**, **Warning**, **Suggestion**. Skip sections with no findings.
+            If the PR looks good, say so briefly.

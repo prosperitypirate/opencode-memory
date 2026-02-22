@@ -1,0 +1,72 @@
+name: opencode-triage
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  # Gate: check account age before allocating a runner for the triage job
+  check-account:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      old-enough: ${{ steps.age.outputs.result }}
+    permissions:
+      contents: none
+    steps:
+      - name: Check account age (>= 30 days)
+        id: age
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const user = await github.rest.users.getByUsername({
+              username: context.payload.issue.user.login
+            });
+            const created = new Date(user.data.created_at);
+            const days = (Date.now() - created) / (1000 * 60 * 60 * 24);
+            return days >= 30;
+          result-encoding: string
+
+  triage:
+    needs: check-account
+    if: needs.check-account.outputs.old-enough == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      id-token: write    # OpenCode GitHub App token exchange
+      contents: read
+      issues: write      # Post triage comment
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: anomalyco/opencode/github@latest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          model: anthropic/claude-sonnet-4-6
+          share: false
+          prompt: |
+            Triage this GitHub issue for the opencode-memory project — a self-hosted
+            AI coding assistant memory system (LanceDB + Voyage AI embeddings,
+            TypeScript plugin, Python/FastAPI backend, React frontend).
+
+            Steps:
+            1. Read the issue title and body carefully.
+            2. Classify it as one of: bug, feature-request, question, docs, performance,
+               security, or invalid/duplicate.
+            3. Post a single helpful comment that:
+               - Acknowledges the issue in 1-2 sentences
+               - Adds a relevant label (use: bug, enhancement, question, documentation,
+                 performance, security, invalid, duplicate)
+               - If it's a bug: ask for reproduction steps if missing, and point to the
+                 relevant component (plugin/, backend/, frontend/, or memory server)
+               - If it's a feature request: briefly assess feasibility given the
+                 architecture (self-hosted LanceDB, Voyage AI embeddings, OpenCode plugin SDK)
+               - If it's a question: answer it directly if you can from the codebase,
+                 otherwise point to the relevant file
+               - If invalid/spam/duplicate: politely close with a brief explanation
+            4. Do not over-explain. Keep the comment concise and useful.
