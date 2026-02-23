@@ -220,7 +220,104 @@ The installer automatically:
 
 ---
 
-### Step 5 — Start a session
+### Step 5 — Add agent instructions (recommended)
+
+The plugin works without this step — memories save and inject automatically. But adding agent instructions to `~/.config/opencode/AGENTS.md` significantly improves behavior: the agent understands what the `[MEMORY]` block is, uses the `memory` tool correctly, never announces memory operations, and proactively searches for relevant context.
+
+Create (or append to) `~/.config/opencode/AGENTS.md` with the following:
+
+<details>
+<summary>Click to expand the recommended AGENTS.md snippet</summary>
+
+````markdown
+# Memory System
+
+You have a **persistent, self-hosted memory system** that works automatically in the background. It uses LanceDB + Voyage AI embeddings, running locally at `http://localhost:8020`.
+
+## How it works (fully automatic — no user action needed)
+
+**On every LLM call**, a `[MEMORY]` block is rebuilt and injected into the system prompt via `system.transform` hook. It contains:
+- **Project Brief** — what the project is, its purpose (includes project-config)
+- **Architecture** — system design, component structure
+- **Tech Context** — stack, tools, languages, dependencies
+- **Product Context** — features, goals, product decisions
+- **Progress & Status** — current state, what's done, what's next
+- **Last Session** — summary of the previous conversation
+- **User Preferences** — personal cross-project preferences
+- **Relevant to Current Task** — semantically matched memories with similarity % and date `[XX%, YYYY-MM-DD]`
+
+**On new projects** (zero memories), the plugin silently reads `README.md`, `package.json`, `docker-compose.yml`, etc. and extracts memories automatically — completely invisible to the user.
+
+**After every assistant turn**, the plugin extracts atomic typed facts from the last 8 messages and stores them. This is the primary memory capture mechanism.
+
+**Every 5 turns**, a session summary is additionally auto-saved.
+
+**Per-turn semantic refresh**: On turns 2+, the "Relevant to Current Task" section is re-searched against the current user message, so context stays aligned with what the user is asking about right now.
+
+**Compaction survival**: When context is compacted (at ~80% usage), the plugin injects memories into the compaction summary, then triggers a full [MEMORY] block rebuild on the next turn. Memory is never lost to compaction.
+
+**Privacy**: Content wrapped in `<private>...</private>` tags is stripped before extraction. Nothing inside private tags leaves the machine.
+
+**Memory aging rules** (handled automatically by the server):
+- `progress`: only the latest survives — older ones are deleted
+- `session-summary`: capped at 3 per project; oldest are condensed into a `learned-pattern` then deleted
+- Structural types (`architecture`, `tech-context`, etc.): evolved understanding updates the existing memory rather than duplicating it
+
+## Your role
+
+- **Read and use the `[MEMORY]` block** — it is your project continuity. Treat it as ground truth for the current project state.
+- **Never ask the user** to "save", "load", or manage memory — it is fully invisible and automatic.
+- **Never announce** that you are saving memory or that memory was loaded.
+- **When the user explicitly asks you to remember something** (e.g. "remember this", "save this for later"), use the `memory` tool with `mode: "add"` immediately. Do not skip this.
+
+## Memory tool
+
+You have access to a `memory` tool. Use it when:
+- The user explicitly asks you to remember something
+- You discover something genuinely important mid-session that won't be captured by auto-save (e.g. a key architectural decision, a tricky bug fix, a strong user preference)
+- You need context not in the `[MEMORY]` block — search proactively when you detect a task switch, encounter unfamiliar references, or need historical context
+
+**Scopes:**
+- `scope: "project"` — for project-specific knowledge (default)
+- `scope: "user"` — for cross-project preferences (e.g. "prefers concise responses", "always uses bun over npm")
+
+**Types to use:**
+| Type | When to use |
+|------|------------|
+| `project-brief` | What the project is, its purpose |
+| `architecture` | System design, component relationships |
+| `tech-context` | Stack, tools, languages, patterns |
+| `product-context` | Features, goals, product decisions |
+| `progress` | Current state, what's done, what's blocked |
+| `project-config` | Config preferences, run commands, env setup |
+| `error-solution` | Bug fixes, workarounds discovered |
+| `preference` | User coding preferences |
+| `learned-pattern` | Patterns observed across the project |
+| `session-summary` | Auto-generated — do not use manually |
+| `conversation` | Raw conversation context — rarely needed manually |
+
+**Example explicit save:**
+```
+memory({ mode: "add", content: "User prefers bun over npm for all installs", scope: "user", type: "preference" })
+memory({ mode: "add", content: "Auth uses JWT stored in httpOnly cookies, not localStorage", scope: "project", type: "architecture" })
+```
+
+**Search when needed:**
+```
+memory({ mode: "search", query: "how is authentication handled" })
+memory({ mode: "list", scope: "project", limit: 10 })
+memory({ mode: "profile" })
+memory({ mode: "forget", memoryId: "abc-123" })
+```
+````
+
+</details>
+
+> **Already have an `AGENTS.md`?** This file is global — OpenCode injects it into every session. If you already have one with other instructions (security rules, coding preferences, etc.), append the Memory System section to it rather than replacing it.
+
+---
+
+### Step 6 — Start a session
 
 Open any project in OpenCode. On your first message, you'll see a `[MEMORY]` block injected into context — this confirms the plugin is running. Memories will auto-save after every assistant turn from here on.
 
