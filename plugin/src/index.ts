@@ -173,12 +173,16 @@ function detectMemoryKeyword(text: string): boolean {
 // Stores structured + semantic results so system.transform can rebuild the
 // [MEMORY] block on every LLM call without additional API requests.
 // Semantic results are refreshed on each user message (turns 2+).
+// After compaction, needsStructuredRefresh is set so the next chat.message
+// re-fetches structured sections + profile (conversation history was summarized
+// away, making the [MEMORY] block the primary source of truth).
 interface SessionMemoryCache {
   structuredSections: Record<string, StructuredMemory[]>;
   profile: ProfileResult | null;
   semanticResults: MemoriesResponseMinimal;
   initialized: boolean;
   lastRefreshAt: number;
+  needsStructuredRefresh?: boolean;
 }
 
 export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
@@ -228,6 +232,13 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
       ? createCompactionHook(ctx as CompactionContext, tags, {
           threshold: CONFIG.compactionThreshold,
           getModelLimit,
+          onCompaction: (sessionID: string) => {
+            const cache = sessionCaches.get(sessionID);
+            if (cache) {
+              cache.needsStructuredRefresh = true;
+              log("compaction: flagged session for structured refresh", { sessionID });
+            }
+          },
         })
       : null;
 
@@ -410,36 +421,109 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
             semanticCount: semanticResults.results?.length ?? 0,
           });
         } else {
-          // ── Turns 2+: Lightweight per-turn semantic refresh ───────────────
-          // Only re-run semantic search (project scope) to update "Relevant to
+          // ── Turns 2+: Per-turn refresh ────────────────────────────────────
+          // Semantic search (project scope) always runs to update "Relevant to
           // Current Task".  User-scope search is skipped — user preferences are
           // stable within a session and already captured in turn-1 results.
-          // Structured sections and profile are also stable within a session.
+          //
+          // After compaction: structured sections + profile are also re-fetched
+          // because conversation history was summarized away and the [MEMORY]
+          // block becomes the primary source of truth.
           try {
-            const freshSearch = await memoryClient.searchMemories(
-              userMessage,
-              tags.project,
-              0.15
-            );
+            // ── Post-compaction: full structured refresh ─────────────────────
+            if (cache?.needsStructuredRefresh) {
+              log("chat.message: post-compaction structured refresh starting", {
+                sessionID: input.sessionID,
+                previousTypeCount: Object.keys(cache.structuredSections).length,
+              });
 
-            if (freshSearch.success && cache) {
-              cache.semanticResults = {
-                results: (freshSearch.results || []).map((r) => ({
-                  ...r,
-                  memory: r.memory,
-                })),
-              };
+              const refreshStart = Date.now();
+
+              // Re-fetch structured sections + profile in parallel with semantic search
+              const [freshList, freshProfile, freshSearch] = await Promise.all([
+                memoryClient.listMemories(tags.project, CONFIG.maxStructuredMemories),
+                memoryClient.getProfile(tags.user, userMessage),
+                memoryClient.searchMemories(userMessage, tags.project, 0.15),
+              ]);
+
+              // Update structured sections
+              if (freshList.success) {
+                const allProjectMemories = freshList.memories || [];
+                const byType: Record<string, StructuredMemory[]> = {};
+                for (const m of allProjectMemories) {
+                  const memType = (m.metadata as Record<string, unknown> | undefined)?.type as string | undefined;
+                  const key = memType || "other";
+                  if (!byType[key]) byType[key] = [];
+                  byType[key].push({
+                    id: m.id,
+                    memory: m.summary,
+                    similarity: 1,
+                    metadata: m.metadata as Record<string, unknown> | undefined,
+                    createdAt: m.createdAt,
+                  });
+                }
+                cache.structuredSections = byType;
+
+                log("chat.message: post-compaction structured sections refreshed", {
+                  typeCount: Object.keys(byType).length,
+                  memoryCount: allProjectMemories.length,
+                });
+              }
+
+              // Update profile
+              if (freshProfile.success) {
+                cache.profile = freshProfile;
+                log("chat.message: post-compaction profile refreshed");
+              }
+
+              // Update semantic results
+              if (freshSearch.success) {
+                cache.semanticResults = {
+                  results: (freshSearch.results || []).map((r) => ({
+                    ...r,
+                    memory: r.memory,
+                  })),
+                };
+              }
+
+              cache.needsStructuredRefresh = false;
               cache.lastRefreshAt = Date.now();
 
-              log("chat.message: semantic refresh (turn 2+)", {
-                resultCount: freshSearch.results?.length ?? 0,
-                duration: Date.now() - start,
+              const refreshDuration = Date.now() - refreshStart;
+              log("chat.message: post-compaction full refresh complete", {
+                duration: refreshDuration,
+                structuredTypes: Object.keys(cache.structuredSections).length,
+                semanticCount: cache.semanticResults.results?.length ?? 0,
+                profilePresent: !!cache.profile,
               });
+            } else {
+              // ── Normal turn: semantic-only refresh ───────────────────────────
+              const freshSearch = await memoryClient.searchMemories(
+                userMessage,
+                tags.project,
+                0.15
+              );
+
+              if (freshSearch.success && cache) {
+                cache.semanticResults = {
+                  results: (freshSearch.results || []).map((r) => ({
+                    ...r,
+                    memory: r.memory,
+                  })),
+                };
+                cache.lastRefreshAt = Date.now();
+
+                log("chat.message: semantic refresh (turn 2+)", {
+                  resultCount: freshSearch.results?.length ?? 0,
+                  duration: Date.now() - start,
+                });
+              }
             }
           } catch (error) {
             // Non-fatal: cache retains previous results
-            log("chat.message: semantic refresh failed (non-fatal)", {
+            log("chat.message: refresh failed (non-fatal)", {
               error: String(error),
+              wasPostCompaction: cache?.needsStructuredRefresh ?? false,
             });
           }
         }
