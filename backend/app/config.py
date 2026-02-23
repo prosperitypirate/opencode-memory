@@ -29,13 +29,26 @@ def validate_id(value: str, field_name: str = "id") -> str:
 # ── API credentials ────────────────────────────────────────────────────────────
 
 XAI_API_KEY: str = os.environ.get("XAI_API_KEY", "")
+GOOGLE_API_KEY: str = os.environ.get("GOOGLE_API_KEY", "")
 VOYAGE_API_KEY: str = os.environ.get("VOYAGE_API_KEY", "")
 DATA_DIR: str = os.environ.get("DATA_DIR", "/data/memory")
+
+# ── Extraction provider ────────────────────────────────────────────────────────
+# "xai" (default) — Grok 4.1 Fast via api.x.ai
+# "google"        — Gemini 3 Flash via Google's OpenAI-compatible endpoint
+EXTRACTION_PROVIDER: str = os.environ.get("EXTRACTION_PROVIDER", "xai")
 
 # ── Model identifiers ──────────────────────────────────────────────────────────
 
 XAI_BASE_URL = "https://api.x.ai/v1"
-EXTRACTION_MODEL = "grok-4-1-fast-non-reasoning"
+XAI_EXTRACTION_MODEL = "grok-4-1-fast-non-reasoning"
+
+GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GOOGLE_EXTRACTION_MODEL = "gemini-3-flash-preview"
+
+# Active model name — resolved from provider for telemetry/logging
+EXTRACTION_MODEL = GOOGLE_EXTRACTION_MODEL if EXTRACTION_PROVIDER == "google" else XAI_EXTRACTION_MODEL
+
 EMBEDDING_MODEL = "voyage-code-3"
 EMBEDDING_DIMS = 1024
 
@@ -81,10 +94,18 @@ VERSIONING_SKIP_TYPES: frozenset[str] = frozenset({"session-summary", "progress"
 MAX_SESSION_SUMMARIES = 3
 
 # ── Pricing (USD per million tokens) ──────────────────────────────────────────
-# Source: https://docs.x.ai/docs/models  (as of 2026-02)
-XAI_PRICE_INPUT_PER_M  = 0.20   # grok-4-1-fast-non-reasoning input
-XAI_PRICE_CACHED_PER_M = 0.05   # grok-4-1-fast-non-reasoning cached input
-XAI_PRICE_OUTPUT_PER_M = 0.50   # grok-4-1-fast-non-reasoning output
 
+# xAI — grok-4-1-fast-non-reasoning
+# Source: https://docs.x.ai/docs/models  (as of 2026-02)
+XAI_PRICE_INPUT_PER_M  = 0.20
+XAI_PRICE_CACHED_PER_M = 0.05
+XAI_PRICE_OUTPUT_PER_M = 0.50
+
+# Google — gemini-3-flash-preview
+# Source: https://ai.google.dev/gemini-api/docs/models  (as of 2026-02)
+GOOGLE_PRICE_INPUT_PER_M  = 0.50
+GOOGLE_PRICE_OUTPUT_PER_M = 3.00
+
+# Voyage AI — voyage-code-3
 # Source: https://docs.voyageai.com/docs/pricing  (as of 2026-02)
-VOYAGE_PRICE_PER_M = 0.18       # voyage-code-3
+VOYAGE_PRICE_PER_M = 0.18

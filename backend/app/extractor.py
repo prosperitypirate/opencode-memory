@@ -1,8 +1,14 @@
 """
-xAI extraction layer — LLM calls, JSON parsing, and memory extraction logic.
+Multi-provider extraction layer — LLM calls, JSON parsing, and memory extraction logic.
+
+Supports xAI (Grok) and Google (Gemini) as extraction providers, configurable via
+EXTRACTION_PROVIDER env var. All callers use call_llm() which dispatches to the
+active provider.
 
 Responsibilities:
-  call_xai()                  — single xAI chat completion, records telemetry
+  call_llm()                  — dispatch to active provider (xAI or Google)
+  call_xai()                  — xAI chat completion, records telemetry
+  call_google()               — Gemini chat completion via OpenAI-compat endpoint
   parse_json_array()          — robustly parse a JSON array from raw LLM output
   extract_memories()          — drive extraction using the right prompt mode
   condense_to_learned_pattern() — age an old session-summary into a learned-pattern
@@ -15,12 +21,18 @@ from typing import Optional
 import httpx
 
 from .config import (
+    EXTRACTION_PROVIDER,
     XAI_API_KEY,
     XAI_BASE_URL,
-    EXTRACTION_MODEL,
+    XAI_EXTRACTION_MODEL,
     XAI_PRICE_INPUT_PER_M,
     XAI_PRICE_CACHED_PER_M,
     XAI_PRICE_OUTPUT_PER_M,
+    GOOGLE_API_KEY,
+    GOOGLE_BASE_URL,
+    GOOGLE_EXTRACTION_MODEL,
+    GOOGLE_PRICE_INPUT_PER_M,
+    GOOGLE_PRICE_OUTPUT_PER_M,
 )
 from .prompts import (
     CONDENSE_SYSTEM,
@@ -60,7 +72,7 @@ def call_xai(system: str, user: str) -> str:
                 "Content-Type": "application/json",
             },
             json={
-                "model": EXTRACTION_MODEL,
+                "model": XAI_EXTRACTION_MODEL,
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user",   "content": user},
@@ -73,7 +85,7 @@ def call_xai(system: str, user: str) -> str:
         data = response.json()
 
     raw: str = data["choices"][0]["message"].get("content") or ""
-    logger.debug("xai call model=%s raw=%r", EXTRACTION_MODEL, raw[:300])
+    logger.debug("xai call model=%s raw=%r", XAI_EXTRACTION_MODEL, raw[:300])
 
     try:
         usage = data.get("usage", {})
@@ -91,6 +103,74 @@ def call_xai(system: str, user: str) -> str:
         logger.debug("Telemetry record error (xai): %s", e)
 
     return raw.strip()
+
+
+def call_google(system: str, user: str) -> str:
+    """Make a Gemini chat completion via Google's OpenAI-compatible endpoint.
+
+    Uses the same chat completions format as xAI but with:
+    - Google's OpenAI-compat base URL
+    - Bearer token auth with GOOGLE_API_KEY
+    - response_format for native JSON mode
+
+    Records token usage to the cost ledger and activity log.
+    Raises httpx.HTTPStatusError on non-2xx responses.
+    """
+    if not GOOGLE_API_KEY:
+        raise ValueError(
+            "EXTRACTION_PROVIDER is 'google' but GOOGLE_API_KEY is not set. "
+            "Add GOOGLE_API_KEY to your .env file."
+        )
+
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            f"{GOOGLE_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GOOGLE_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": GOOGLE_EXTRACTION_MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user",   "content": user},
+                ],
+                "max_tokens": 2000,
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    raw: str = data["choices"][0]["message"].get("content") or ""
+    logger.debug("google call model=%s raw=%r", GOOGLE_EXTRACTION_MODEL, raw[:300])
+
+    try:
+        usage = data.get("usage", {})
+        prompt_tokens     = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        cost = (
+            prompt_tokens     * GOOGLE_PRICE_INPUT_PER_M  / 1_000_000
+            + completion_tokens * GOOGLE_PRICE_OUTPUT_PER_M / 1_000_000
+        )
+        ledger.record_google(prompt_tokens, completion_tokens)
+        activity_log.record_google(prompt_tokens, completion_tokens, cost)
+    except Exception as e:
+        logger.debug("Telemetry record error (google): %s", e)
+
+    return raw.strip()
+
+
+def call_llm(system: str, user: str) -> str:
+    """Route to the configured extraction provider.
+
+    Dispatches to call_google() or call_xai() based on EXTRACTION_PROVIDER.
+    All extraction callers should use this instead of provider-specific functions.
+    """
+    if EXTRACTION_PROVIDER == "google":
+        return call_google(system, user)
+    return call_xai(system, user)
 
 
 # ── JSON parsing ───────────────────────────────────────────────────────────────
@@ -146,7 +226,7 @@ def extract_memories(
     summary_mode: bool = False,
     init_mode: bool = False,
 ) -> list[dict]:
-    """Call xAI to extract typed memory facts from *messages*.
+    """Call the configured LLM provider to extract typed memory facts from *messages*.
 
     Returns a list of ``{"memory": str, "type": str}`` dicts.
 
@@ -173,11 +253,11 @@ def extract_memories(
     truncated = conversation[:_MAX_CONTENT_CHARS]
 
     if init_mode:
-        raw = call_xai(INIT_EXTRACTION_SYSTEM, INIT_EXTRACTION_USER.format(content=truncated))
+        raw = call_llm(INIT_EXTRACTION_SYSTEM, INIT_EXTRACTION_USER.format(content=truncated))
     elif summary_mode:
-        raw = call_xai(SUMMARY_SYSTEM, SUMMARY_USER.format(conversation=truncated))
+        raw = call_llm(SUMMARY_SYSTEM, SUMMARY_USER.format(conversation=truncated))
     else:
-        raw = call_xai(EXTRACTION_SYSTEM, EXTRACTION_USER.format(conversation=truncated))
+        raw = call_llm(EXTRACTION_SYSTEM, EXTRACTION_USER.format(conversation=truncated))
 
     facts = parse_json_array(raw)
     # Attach the raw source text to every fact so the route can store it alongside
@@ -202,7 +282,7 @@ def detect_contradictions(new_memory: str, candidates: list[dict]) -> list[str]:
             f"- ID: {c['id']} | {c['memory']}"
             for c in candidates
         )
-        raw = call_xai(
+        raw = call_llm(
             CONTRADICTION_SYSTEM,
             CONTRADICTION_USER.format(
                 new_memory=new_memory,
@@ -231,7 +311,7 @@ def detect_contradictions(new_memory: str, candidates: list[dict]) -> list[str]:
 def condense_to_learned_pattern(summary_text: str) -> Optional[dict]:
     """Condense an old session-summary string into a compact learned-pattern memory."""
     try:
-        raw   = call_xai(CONDENSE_SYSTEM, CONDENSE_USER.format(summary=summary_text[:_MAX_SUMMARY_CHARS]))
+        raw   = call_llm(CONDENSE_SYSTEM, CONDENSE_USER.format(summary=summary_text[:_MAX_SUMMARY_CHARS]))
         items = parse_json_array(raw)
         if items:
             return items[0]

@@ -16,6 +16,9 @@ from .config import (
     XAI_PRICE_INPUT_PER_M,
     XAI_PRICE_CACHED_PER_M,
     XAI_PRICE_OUTPUT_PER_M,
+    GOOGLE_EXTRACTION_MODEL,
+    GOOGLE_PRICE_INPUT_PER_M,
+    GOOGLE_PRICE_OUTPUT_PER_M,
     VOYAGE_PRICE_PER_M,
 )
 
@@ -36,6 +39,12 @@ class CostLedger:
             "calls": 0,
             "prompt_tokens": 0,
             "cached_tokens": 0,
+            "completion_tokens": 0,
+            "cost_usd": 0.0,
+        },
+        "google": {
+            "calls": 0,
+            "prompt_tokens": 0,
             "completion_tokens": 0,
             "cost_usd": 0.0,
         },
@@ -76,6 +85,16 @@ class CostLedger:
         except Exception as e:
             logger.warning("Cost ledger save error: %s", e)
 
+    def _update_total(self) -> None:
+        """Recompute total_cost_usd from all provider buckets. Caller must hold _lock."""
+        self._data["total_cost_usd"] = round(
+            self._data["xai"]["cost_usd"]
+            + self._data.get("google", {}).get("cost_usd", 0.0)
+            + self._data["voyage"]["cost_usd"],
+            8,
+        )
+        self._data["last_updated"] = datetime.now(timezone.utc).isoformat()
+
     def record_xai(self, prompt_tokens: int, cached_tokens: int, completion_tokens: int) -> None:
         cost = (
             (prompt_tokens - cached_tokens) * XAI_PRICE_INPUT_PER_M / 1_000_000
@@ -89,10 +108,24 @@ class CostLedger:
             x["cached_tokens"] += cached_tokens
             x["completion_tokens"] += completion_tokens
             x["cost_usd"] = round(x["cost_usd"] + cost, 8)
-            self._data["total_cost_usd"] = round(
-                self._data["xai"]["cost_usd"] + self._data["voyage"]["cost_usd"], 8
-            )
-            self._data["last_updated"] = datetime.now(timezone.utc).isoformat()
+            self._update_total()
+            self._save()
+
+    def record_google(self, prompt_tokens: int, completion_tokens: int) -> None:
+        cost = (
+            prompt_tokens * GOOGLE_PRICE_INPUT_PER_M / 1_000_000
+            + completion_tokens * GOOGLE_PRICE_OUTPUT_PER_M / 1_000_000
+        )
+        with self._lock:
+            # Backfill "google" key for ledgers created before this provider existed
+            if "google" not in self._data:
+                self._data["google"] = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+            g = self._data["google"]
+            g["calls"] += 1
+            g["prompt_tokens"] += prompt_tokens
+            g["completion_tokens"] += completion_tokens
+            g["cost_usd"] = round(g["cost_usd"] + cost, 8)
+            self._update_total()
             self._save()
 
     def record_voyage(self, tokens: int) -> None:
@@ -102,10 +135,7 @@ class CostLedger:
             v["calls"] += 1
             v["tokens"] += tokens
             v["cost_usd"] = round(v["cost_usd"] + cost, 8)
-            self._data["total_cost_usd"] = round(
-                self._data["xai"]["cost_usd"] + self._data["voyage"]["cost_usd"], 8
-            )
-            self._data["last_updated"] = datetime.now(timezone.utc).isoformat()
+            self._update_total()
             self._save()
 
     def snapshot(self) -> dict:
@@ -156,6 +186,25 @@ class ActivityLog:
             "operation": operation,
             "prompt_tokens": prompt_tokens,
             "cached_tokens": cached_tokens,
+            "completion_tokens": completion_tokens,
+            "tokens": None,
+            "cost_usd": round(cost_usd, 8),
+        })
+
+    def record_google(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cost_usd: float,
+        operation: str = "extraction",
+    ) -> None:
+        self._append({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "api": "google",
+            "model": GOOGLE_EXTRACTION_MODEL,
+            "operation": operation,
+            "prompt_tokens": prompt_tokens,
+            "cached_tokens": None,
             "completion_tokens": completion_tokens,
             "tokens": None,
             "cost_usd": round(cost_usd, 8),
