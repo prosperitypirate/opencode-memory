@@ -53,6 +53,9 @@ interface SummarizeContext {
 export interface CompactionOptions {
   threshold?: number;
   getModelLimit?: (providerID: string, modelID: string) => number | undefined;
+  /** Called after compaction completes for a session. Lets the caller
+   *  invalidate caches (e.g. flag structured sections for re-fetch). */
+  onCompaction?: (sessionID: string) => void;
 }
 
 function createCompactionPrompt(projectMemories: string[]): string {
@@ -405,6 +408,13 @@ export function createCompactionHook(
       }).catch(() => {});
 
       state.compactionInProgress.delete(sessionID);
+
+      // Notify caller so it can invalidate caches (e.g. flag structured
+      // sections for re-fetch on the next user message).
+      if (options?.onCompaction) {
+        log("[compaction] notifying caller — session needs cache refresh", { sessionID });
+        options.onCompaction(sessionID);
+      }
 
       setTimeout(async () => {
         try {
