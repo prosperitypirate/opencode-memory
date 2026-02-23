@@ -380,7 +380,7 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
     tool: {
       memory: tool({
         description:
-          "Manage and query the persistent memory system (self-hosted). Use 'search' to find relevant memories, 'add' to store new knowledge, 'profile' to view user memories, 'list' to see recent memories, 'forget' to remove a memory.",
+          "Persistent memory system (self-hosted). Use 'search' to find relevant memories, 'add' to store new knowledge, 'profile' to view user memories, 'list' to see recent memories, 'forget' to remove a memory. PROACTIVE USAGE: Search mid-session when you detect a task switch, encounter unfamiliar references, or need historical context not in the [MEMORY] block. Example: memory({ mode: 'search', query: 'PR conventions and commit workflow' })",
         args: {
           mode: tool.schema
             .enum(["add", "search", "profile", "list", "forget", "help"])
