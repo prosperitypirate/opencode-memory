@@ -148,40 +148,104 @@ export function DashboardClient() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* xAI */}
-          <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-semibold text-zinc-300">
-                xAI · grok-4-1-fast-non-reasoning
-              </span>
-              <span className="text-sm font-mono font-bold text-amber-400">
-                {fmtUSD(costs.xai.cost_usd)}
-              </span>
+          {/* xAI — always shown (default provider) */}
+          {costs.xai.calls > 0 && (
+            <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-semibold text-zinc-300">
+                  xAI · grok-4-1-fast
+                </span>
+                <span className="text-sm font-mono font-bold text-amber-400">
+                  {fmtUSD(costs.xai.cost_usd)}
+                </span>
+              </div>
+              <div className="text-xs font-mono text-zinc-500 space-y-1">
+                <div className="flex justify-between">
+                  <span>calls</span>
+                  <span className="text-zinc-400">{costs.xai.calls.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>input tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.xai.prompt_tokens)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>cached tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.xai.cached_tokens)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>output tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.xai.completion_tokens)}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-zinc-700/50 text-zinc-600">
+                  <span>$0.20 / $0.05 cached / $0.50 per M</span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs font-mono text-zinc-500 space-y-1">
-              <div className="flex justify-between">
-                <span>calls</span>
-                <span className="text-zinc-400">{costs.xai.calls.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>input tokens</span>
-                <span className="text-zinc-400">{fmtTokens(costs.xai.prompt_tokens)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>cached tokens</span>
-                <span className="text-zinc-400">{fmtTokens(costs.xai.cached_tokens)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>output tokens</span>
-                <span className="text-zinc-400">{fmtTokens(costs.xai.completion_tokens)}</span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-zinc-700/50 text-zinc-600">
-                <span>$0.20 / $0.05 cached / $0.50 per M</span>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Voyage AI */}
+          {/* Anthropic — shown when provider has been used */}
+          {costs.anthropic && costs.anthropic.calls > 0 && (
+            <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-semibold text-zinc-300">
+                  Anthropic · claude-haiku-4-5
+                </span>
+                <span className="text-sm font-mono font-bold text-violet-400">
+                  {fmtUSD(costs.anthropic.cost_usd)}
+                </span>
+              </div>
+              <div className="text-xs font-mono text-zinc-500 space-y-1">
+                <div className="flex justify-between">
+                  <span>calls</span>
+                  <span className="text-zinc-400">{costs.anthropic.calls.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>input tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.anthropic.prompt_tokens)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>output tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.anthropic.completion_tokens)}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-zinc-700/50 text-zinc-600">
+                  <span>$1.00 / $5.00 per M</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Google — shown when provider has been used */}
+          {costs.google && costs.google.calls > 0 && (
+            <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-semibold text-zinc-300">
+                  Google · gemini-3-flash
+                </span>
+                <span className="text-sm font-mono font-bold text-green-400">
+                  {fmtUSD(costs.google.cost_usd)}
+                </span>
+              </div>
+              <div className="text-xs font-mono text-zinc-500 space-y-1">
+                <div className="flex justify-between">
+                  <span>calls</span>
+                  <span className="text-zinc-400">{costs.google.calls.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>input tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.google.prompt_tokens)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>output tokens</span>
+                  <span className="text-zinc-400">{fmtTokens(costs.google.completion_tokens)}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-zinc-700/50 text-zinc-600">
+                  <span>$0.50 / $3.00 per M</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Voyage AI — always shown (embeddings, always active) */}
           <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-semibold text-zinc-300">
