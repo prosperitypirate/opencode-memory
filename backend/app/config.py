@@ -43,7 +43,7 @@ EXTRACTION_PROVIDER: str = os.environ.get("EXTRACTION_PROVIDER", "xai")
 XAI_BASE_URL = "https://api.x.ai/v1"
 XAI_EXTRACTION_MODEL = "grok-4-1-fast-non-reasoning"
 
-GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 GOOGLE_EXTRACTION_MODEL = "gemini-3-flash-preview"
 
 # Active model name — resolved from provider for telemetry/logging

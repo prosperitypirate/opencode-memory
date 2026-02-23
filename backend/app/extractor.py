@@ -112,12 +112,13 @@ def call_xai(system: str, user: str) -> str:
 
 
 def call_google(system: str, user: str) -> str:
-    """Make a Gemini chat completion via Google's OpenAI-compatible endpoint.
+    """Make a Gemini generateContent call via the native REST API.
 
-    Uses the same chat completions format as xAI but with:
-    - Google's OpenAI-compat base URL
-    - Bearer token auth with GOOGLE_API_KEY
-    - response_format for native JSON mode
+    Uses the direct endpoint (no OpenAI compatibility layer) for maximum speed:
+    - POST /v1beta/models/{model}:generateContent
+    - Auth via x-goog-api-key header
+    - system_instruction for system prompt
+    - generationConfig.responseMimeType for native JSON mode
 
     Records token usage to the cost ledger and activity log.
     Raises httpx.HTTPStatusError on non-2xx responses.
@@ -131,36 +132,47 @@ def call_google(system: str, user: str) -> str:
     t0 = time.monotonic()
     with httpx.Client(timeout=60.0) as client:
         response = client.post(
-            f"{GOOGLE_BASE_URL}/chat/completions",
+            f"{GOOGLE_BASE_URL}/models/{GOOGLE_EXTRACTION_MODEL}:generateContent",
             headers={
-                "Authorization": f"Bearer {GOOGLE_API_KEY}",
+                "x-goog-api-key": GOOGLE_API_KEY,
                 "Content-Type": "application/json",
             },
             json={
-                "model": GOOGLE_EXTRACTION_MODEL,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": user},
+                "system_instruction": {
+                    "parts": [{"text": system}],
+                },
+                "contents": [
+                    {
+                        "parts": [{"text": user}],
+                    },
                 ],
-                "max_tokens": 2000,
-                "temperature": 0,
-                "response_format": {"type": "json_object"},
+                "generationConfig": {
+                    "temperature": 0,
+                    "maxOutputTokens": 2000,
+                    "responseMimeType": "application/json",
+                },
             },
         )
         response.raise_for_status()
         data = response.json()
     elapsed_ms = (time.monotonic() - t0) * 1000
 
-    raw: str = data["choices"][0]["message"].get("content") or ""
+    # Native API response: candidates[0].content.parts[0].text
+    raw: str = ""
+    try:
+        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        logger.warning("google call: unexpected response structure: %r", str(data)[:300])
+
+    # Token usage: usageMetadata.promptTokenCount / candidatesTokenCount
+    usage = data.get("usageMetadata", {})
+    prompt_tokens     = usage.get("promptTokenCount", 0)
+    completion_tokens = usage.get("candidatesTokenCount", 0)
+
     logger.info("google call model=%s elapsed=%.0fms tokens=%d/%d",
-                GOOGLE_EXTRACTION_MODEL, elapsed_ms,
-                data.get("usage", {}).get("prompt_tokens", 0),
-                data.get("usage", {}).get("completion_tokens", 0))
+                GOOGLE_EXTRACTION_MODEL, elapsed_ms, prompt_tokens, completion_tokens)
 
     try:
-        usage = data.get("usage", {})
-        prompt_tokens     = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
         cost = (
             prompt_tokens     * GOOGLE_PRICE_INPUT_PER_M  / 1_000_000
             + completion_tokens * GOOGLE_PRICE_OUTPUT_PER_M / 1_000_000
