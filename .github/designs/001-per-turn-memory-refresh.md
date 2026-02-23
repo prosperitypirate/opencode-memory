@@ -3,7 +3,7 @@
 **Feature**: Automatic per-turn semantic memory refresh in system prompt  
 **Issue**: #34 (agent UX: mid-session memory retrieval)  
 **Branch**: `feature/mid-session-retrieval`  
-**Status**: DESIGN COMPLETE — READY FOR IMPLEMENTATION  
+**Status**: IMPLEMENTATION COMPLETE — ALL PHASES DONE  
 **Created**: February 22, 2026  
 **Estimated Duration**: 4-6 hours across 5 phases  
 
@@ -288,7 +288,7 @@ chat.message hook
 **Goal**: Update memory tool description to guide agent towards proactive mid-session search  
 **Duration**: 15 minutes  
 **Dependencies**: None  
-**Status**: ⏳ PENDING
+**Status**: ✅ DONE (commit `52638c1`)
 
 **Deliverables:**
 - [ ] `plugin/src/index.ts:382-383` — Update memory tool description (1 change)
@@ -324,7 +324,7 @@ description:
 **Goal**: Add session-scoped cache and refactor chat.message to populate it  
 **Duration**: 1-1.5 hours  
 **Dependencies**: Phase 1  
-**Status**: ⏳ PENDING
+**Status**: ✅ DONE (commit `3e45027`)
 
 **Deliverables:**
 - [ ] `plugin/src/index.ts` — Add SessionMemoryCache interface (top of file)
@@ -395,7 +395,7 @@ cd plugin && bun run build && cd ../testing && bun run test
 **Goal**: Implement system.transform hook to inject [MEMORY] from cache into system prompt  
 **Duration**: 1-1.5 hours  
 **Dependencies**: Phase 2  
-**Status**: ⏳ PENDING
+**Status**: ✅ DONE (commit `3e45027`)
 
 **Deliverables:**
 - [ ] `plugin/src/index.ts` — Add "experimental.chat.system.transform" hook (after chat.message)
@@ -456,7 +456,7 @@ cd plugin && bun run build && cd ../testing && bun run test
 **Goal**: Add semantic search on turns 2+ to refresh "Relevant to Current Task" section  
 **Duration**: 1-1.5 hours  
 **Dependencies**: Phase 3  
-**Status**: ⏳ PENDING
+**Status**: ✅ DONE (commit `3e45027`)
 
 **Deliverables:**
 - [ ] `plugin/src/index.ts:268-378` — Add else branch to chat.message for turns 2+
@@ -523,7 +523,7 @@ cd plugin && bun run build && cd ../testing && bun run test
 **Goal**: Create E2E scenario 11 to test mid-session memory refresh  
 **Duration**: 1 hour  
 **Dependencies**: Phases 1-4  
-**Status**: ⏳ PENDING
+**Status**: ✅ DONE (commit `0ba891f`)
 
 **Deliverables:**
 - [ ] `testing/src/scenarios/11-mid-session-retrieval.ts` — New scenario (100+ lines)
@@ -825,6 +825,6 @@ git push origin main
 
 ---
 
-**Status**: DESIGN COMPLETE — READY FOR IMPLEMENTATION
+**Status**: IMPLEMENTATION COMPLETE
 
-This design document captures all research, decisions, and implementation phases needed to build the per-turn memory refresh feature. Session continuity is preserved; next session can begin implementation immediately without re-research.
+All 5 phases implemented and validated. Scenarios 01 and 11 pass. Branch `feature/mid-session-retrieval` has 4 commits ready for PR.
