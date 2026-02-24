@@ -13,7 +13,7 @@ export type BenchEvent =
   | { type: "answer_question";    questionId: string; preview: string; done: number; total: number }
   | { type: "evaluate_question";  questionId: string; questionType: string; correct: boolean; explanation: string; done: number; total: number; runningCorrect: number; retrievalMetrics?: { hitAtK: number; precisionAtK: number; f1AtK: number; mrr: number; ndcg: number; k: number } }
   | { type: "cleanup_progress";   deleted: number; total: number }
-  | { type: "run_complete";       accuracy: number; correct: number; total: number; byType: Record<string, { correct: number; total: number }> };
+  | { type: "run_complete";       accuracy: number; correct: number; total: number; byType: Record<string, { correct: number; total: number }>; durationMs?: number };
 
 type SseClient = { write: (data: string) => void };
 

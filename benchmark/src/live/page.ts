@@ -139,6 +139,11 @@ export const HTML = /* html */ `<!DOCTYPE html>
         <div class="score-sub" id="score-sub">awaiting results</div>
       </div>
       <div id="cats"></div>
+      <div id="timer-panel">
+        <div class="sidebar-title">Run Time</div>
+        <div id="timer-display" style="font-size:20px;font-weight:700;color:#fff;line-height:1;">—</div>
+        <div id="timer-sub" style="font-size:11px;color:var(--muted);margin-top:3px;">waiting</div>
+      </div>
       <div id="ingest-panel" style="display:none">
         <div class="sidebar-title">Ingest Speed</div>
         <div id="ingest-metrics" style="font-size:12px;color:var(--text);"></div>
@@ -176,6 +181,37 @@ const retrievalPanel = document.getElementById("retrieval-panel");
 const retrMetrics    = document.getElementById("retr-metrics");
 const ingestPanel    = document.getElementById("ingest-panel");
 const ingestMetrics  = document.getElementById("ingest-metrics");
+const timerDisplay   = document.getElementById("timer-display");
+const timerSub       = document.getElementById("timer-sub");
+
+// Run timer state
+let runStartTs = 0;
+let timerInterval = null;
+
+function formatDuration(ms) {
+  const totalSecs = Math.floor(ms / 1000);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return h + "h " + String(m).padStart(2, "0") + "m " + String(s).padStart(2, "0") + "s";
+  return m + "m " + String(s).padStart(2, "0") + "s";
+}
+
+function startTimer() {
+  runStartTs = Date.now();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const elapsed = Date.now() - runStartTs;
+    if (timerDisplay) timerDisplay.textContent = formatDuration(elapsed);
+    if (timerSub) timerSub.textContent = "running";
+  }, 1000);
+}
+
+function stopTimer(finalMs) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if (timerDisplay) timerDisplay.textContent = formatDuration(finalMs);
+  if (timerSub) timerSub.textContent = "complete";
+}
 
 // Live score state
 const catState = {};  // { type: { correct, total } }
@@ -320,12 +356,15 @@ function handle(ev) {
       retrMrrSum   = 0;
       retrNdcgSum  = 0;
       retrCount    = 0;
+      ingestDurations.length = 0;
       runDone      = false;
       feed.innerHTML = "";
       cats.innerHTML = '<div class="sidebar-title">By Category</div>';
       scoreBig.textContent = "—";
       scoreSub.textContent = "awaiting results";
       if (retrievalPanel) retrievalPanel.style.display = "none";
+      if (ingestPanel) ingestPanel.style.display = "none";
+      startTimer();
       badgeRun.textContent = ev.runId;
       badgeRun.style.display = "";
       badgeLive.textContent = "live";
@@ -430,17 +469,20 @@ function handle(ev) {
       appendRow("🗑", "Cleanup", "deleted " + ev.deleted + " / " + ev.total, "");
       break;
 
-    case "run_complete":
+    case "run_complete": {
+      const finalMs = ev.durationMs || (Date.now() - runStartTs);
+      stopTimer(finalMs);
       setPhase("done");
       appendRow(
         "★",
-        "Run complete — " + Math.round(ev.accuracy * 100) + "% overall",
+        "Run complete — " + Math.round(ev.accuracy * 100) + "% overall  (" + formatDuration(finalMs) + ")",
         ev.correct + " / " + ev.total + " correct",
         ""
       );
       scoreBig.textContent = Math.round(ev.accuracy * 100) + "%";
-      scoreSub.textContent  = ev.correct + " / " + ev.total + " · run complete";
+      scoreSub.textContent  = ev.correct + " / " + ev.total + " · " + formatDuration(finalMs);
       break;
+    }
   }
 }
 

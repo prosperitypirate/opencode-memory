@@ -75,6 +75,7 @@ export function runReport(cp: Checkpoint): BenchmarkReport {
     evaluations:    evals,
     latency,
     ingestTotalMs,
+    totalDurationMs: cp.totalDurationMs,
     retrieval,
     retrievalByType: Object.keys(retrievalByType).length > 0 ? retrievalByType : undefined,
   };
@@ -117,6 +118,14 @@ export function runReport(cp: Checkpoint): BenchmarkReport {
     if (ingestTotalMs) {
       console.log(`\n  Ingest total: ${(ingestTotalMs / 1000).toFixed(1)}s (${ingestMs.length} sessions)`);
     }
+  }
+
+  // ── Total run time ──────────────────────────────────────────────────────────
+  if (cp.totalDurationMs) {
+    const secs = cp.totalDurationMs / 1000;
+    const mins = Math.floor(secs / 60);
+    const remSecs = Math.round(secs % 60);
+    console.log(`\n  Total run time: ${mins}m ${remSecs}s`);
   }
 
   console.log(`\n  Report saved to: ${path}`);

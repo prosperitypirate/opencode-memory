@@ -35,10 +35,10 @@ VOYAGE_API_KEY: str = os.environ.get("VOYAGE_API_KEY", "")
 DATA_DIR: str = os.environ.get("DATA_DIR", "/data/memory")
 
 # ── Extraction provider ────────────────────────────────────────────────────────
-# "xai"       (default) — Grok 4.1 Fast via api.x.ai
+# "anthropic" (default) — Claude Haiku 4.5 via Anthropic Messages API (most consistent)
+# "xai"                 — Grok 4.1 Fast via api.x.ai (fastest, higher variance)
 # "google"              — Gemini 3 Flash via native generateContent API
-# "anthropic"           — Claude Haiku 4.5 via Anthropic Messages API
-EXTRACTION_PROVIDER: str = os.environ.get("EXTRACTION_PROVIDER", "xai")
+EXTRACTION_PROVIDER: str = os.environ.get("EXTRACTION_PROVIDER", "anthropic")
 
 # ── Model identifiers ──────────────────────────────────────────────────────────
 

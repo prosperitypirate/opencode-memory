@@ -63,6 +63,8 @@ async function cmdRun(args: string[]): Promise<void> {
   const questions = limit ? allQuestions.slice(0, limit) : allQuestions;
   const sessions  = limit ? allSessions.slice(0, limit)  : allSessions;
 
+  const runStartTime = Date.now();
+
   console.log(`\n  DevMemBench — Coding Assistant Memory Benchmark`);
   console.log(`  ${"─".repeat(48)}`);
   console.log(`  Run ID  : ${runId}`);
@@ -122,6 +124,12 @@ async function cmdRun(args: string[]): Promise<void> {
     log.info("Skipping evaluate (already complete)");
   }
 
+  // Record total run duration (before report so it's included in report.json)
+  const totalDurationMs = Date.now() - runStartTime;
+  cp.completedAt = new Date().toISOString();
+  cp.totalDurationMs = totalDurationMs;
+  saveCheckpoint(cp);
+
   if (!isPhaseComplete(cp, "report")) {
     runReport(cp);
   } else {
@@ -138,7 +146,7 @@ async function cmdRun(args: string[]): Promise<void> {
       byType[e.questionType].total++;
       if (e.score === 1) byType[e.questionType].correct++;
     }
-    emit({ type: "run_complete", accuracy: correct / total, correct, total, byType });
+    emit({ type: "run_complete", accuracy: correct / total, correct, total, byType, durationMs: totalDurationMs });
 
     // Print retrieval summary to terminal if metrics are available
     const evalsWithR = cp.evaluations.filter(e => e.retrievalMetrics != null);
@@ -187,6 +195,13 @@ function cmdStatus(args: string[]): void {
 
   console.log(`\n  Run: ${runId}`);
   console.log(`  Started: ${cp.startedAt}`);
+  if (cp.completedAt) console.log(`  Completed: ${cp.completedAt}`);
+  if (cp.totalDurationMs) {
+    const secs = cp.totalDurationMs / 1000;
+    const mins = Math.floor(secs / 60);
+    const remSecs = Math.round(secs % 60);
+    console.log(`  Duration: ${mins}m ${remSecs}s`);
+  }
   console.log(`  Completed phases: ${cp.completedPhases.join(" → ") || "(none)"}`);
   if (cp.ingestResult) {
     console.log(`  Memories: ${cp.ingestResult.memoriesAdded} added, ${cp.ingestResult.memoriesUpdated} updated`);
@@ -241,7 +256,10 @@ function cmdList(): void {
     const accuracy = cp.evaluations
       ? `${((cp.evaluations.filter((e) => e.score === 1).length / cp.evaluations.length) * 100).toFixed(1)}%`
       : "(incomplete)";
-    console.log(`  ${runId.padEnd(20)} ${cp.completedPhases.at(-1)?.padEnd(10) ?? "started".padEnd(10)} ${accuracy} ${hasReport ? "✓ report" : ""}`);
+    const duration = cp.totalDurationMs
+      ? `${Math.floor(cp.totalDurationMs / 60000)}m ${Math.round((cp.totalDurationMs % 60000) / 1000)}s`
+      : "";
+    console.log(`  ${runId.padEnd(20)} ${cp.completedPhases.at(-1)?.padEnd(10) ?? "started".padEnd(10)} ${accuracy.padEnd(12)} ${duration.padEnd(8)} ${hasReport ? "✓ report" : ""}`);
   }
   console.log();
 }

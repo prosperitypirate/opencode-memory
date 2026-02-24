@@ -194,6 +194,8 @@ export interface BenchmarkReport {
   };
   /** Total ingest wall-clock time in ms */
   ingestTotalMs?: number;
+  /** Total wall-clock time for the entire benchmark run in ms */
+  totalDurationMs?: number;
   /** Aggregate retrieval metrics */
   retrieval?: AggregateRetrievalStats;
   /** Per-category retrieval metrics */
@@ -211,6 +213,9 @@ export interface Checkpoint {
   judgeModel: string;
   answeringModel: string;
   startedAt: string;
+  completedAt?: string;
+  /** Total wall-clock time for the entire benchmark run in ms */
+  totalDurationMs?: number;
   completedPhases: Phase[];
   ingestResult?: IngestResult;
   searchResults?: SearchPhaseResult[];

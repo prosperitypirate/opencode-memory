@@ -144,19 +144,19 @@ cd ..                    # back to repo root
 cp .env.example .env
 ```
 
-Open `.env` and configure your extraction provider and keys:
+Open `.env` and add your API keys:
 
 ```env
-# ── Extraction provider (pick one) ────────────────────────────
-# "xai"       — Grok 4.1 Fast · fastest · $0.20/$0.50 per MTok
-# "google"    — Gemini 3 Flash · native JSON mode · $0.50/$3.00 per MTok
-# "anthropic" — Claude Haiku 4.5 · most consistent · $1.00/$5.00 per MTok
-EXTRACTION_PROVIDER=xai
+# ── Extraction provider ───────────────────────────────────────
+# "anthropic" — Claude Haiku 4.5 · default · most consistent (93.5% avg benchmark)
+# "xai"       — Grok 4.1 Fast · fastest · higher run-to-run variance
+# "google"    — Gemini 3 Flash · native JSON mode
+EXTRACTION_PROVIDER=anthropic
 
 # API key for your chosen provider (only one required)
-XAI_API_KEY=xai-...          # https://console.x.ai
+ANTHROPIC_API_KEY=sk-ant-...  # https://console.anthropic.com/settings/keys
+# XAI_API_KEY=                # https://console.x.ai
 # GOOGLE_API_KEY=             # https://aistudio.google.com/apikey
-# ANTHROPIC_API_KEY=          # https://console.anthropic.com/settings/keys
 
 # Voyage AI API key — used for code embeddings (voyage-code-3)
 # Get yours at: https://www.voyageai.com  (free tier available)
@@ -352,7 +352,7 @@ The agent sees this in its system prompt:
 ## Tech Context
 - Plugin lives at plugin/ subdirectory; opencode.json must point there not repo root
 - Docker Compose uses env_file to load .env — do not export keys in shell
-- Backend uses voyage-code-3 embeddings; extraction via grok-4-1-fast-non-reasoning
+- Backend uses voyage-code-3 embeddings; extraction via claude-haiku-4-5 (default)
 
 ## Architecture
 - Backend refactored from monolithic main.py into app/ package with focused modules
@@ -360,7 +360,7 @@ The agent sees this in its system prompt:
 
 ## Progress & Status
 - Memory server running at localhost:8020, dashboard at localhost:3030
-- Benchmark at 94.5% (189/200); cross-synthesis at 80% is primary remaining gap
+- Benchmark at 93.5% avg (3 runs, 92.0–95.0%); cross-synthesis at ~71% is primary remaining gap
 
 ## Last Session
 - Improved extraction prompt to preserve causal chains for error-solution memories
@@ -371,7 +371,7 @@ The agent sees this in its system prompt:
 - Prefers concise responses; no emojis unless explicitly requested
 
 ## Relevant to Current Task
-- [94%, 2026-02-21] Backend extraction model is grok-4-1-fast-non-reasoning — fast, structured JSON, fractions of a cent per session
+- [94%, 2026-02-23] Default extraction model is claude-haiku-4-5 — 93.5% avg benchmark, most consistent, ~$0.11/session
 - [88%, 2026-02-21] Contradiction detection marks superseded memories with superseded_by field; excluded from retrieval
 ```
 
@@ -420,21 +420,21 @@ When the context window approaches capacity, OpenCode summarises the conversatio
 
 ## Extraction Providers
 
-Memory extraction is a well-defined, deterministic task: read a conversation, output a JSON array of typed facts. It doesn't need deep reasoning — it needs to be fast, cheap, and reliably structured. The backend supports three providers, selectable via a single env var:
+Memory extraction is a well-defined, deterministic task: read a conversation, output a JSON array of typed facts. It doesn't need deep reasoning — it needs to be reliable, structured, and consistent. The backend supports three providers, selectable via a single env var:
 
 | Provider | Model | Speed | Cost (in/out per MTok) | Benchmark | Notes |
 |---|---|---|---|---|---|
-| **xAI** (default) | `grok-4-1-fast-non-reasoning` | ~5s/session | $0.20 / $0.50 | 78.5–94.5% | Fastest and cheapest; some run-to-run variance |
-| **Anthropic** | `claude-haiku-4-5` | ~14s/session | $1.00 / $5.00 | 92.0% | Most consistent results |
+| **Anthropic** (default) | `claude-haiku-4-5` | ~14s/session | $1.00 / $5.00 | **93.5% avg** (92.0–95.0%, 3pp variance) | Most consistent — recommended |
+| **xAI** | `grok-4-1-fast-non-reasoning` | ~5s/session | $0.20 / $0.50 | ~86.5% avg (78.5–94.5%, 16pp variance) | Fastest and cheapest; high run-to-run variance |
 | **Google** | `gemini-3-flash-preview` | ~21s/session | $0.50 / $3.00 | — | Native JSON mode; high TTFT latency |
 
 ```bash
 # Switch provider — edit .env, then restart
-EXTRACTION_PROVIDER=anthropic   # or "xai" or "google"
+EXTRACTION_PROVIDER=xai   # or "anthropic" (default) or "google"
 docker compose up -d
 ```
 
-Ingest is a **one-time cost per conversation** (not on the hot path), so consistency may outweigh speed depending on your use case. All providers use the same extraction prompt and produce identical memory formats.
+**Why Haiku is the default:** Across 3 benchmark runs (200 questions each), Haiku averaged 93.5% accuracy with only 3pp variance (92.0–95.0%), while Grok averaged ~86.5% with 16pp variance (78.5–94.5%). The cost difference is negligible in practice — a 20-turn session costs ~$0.11 with Haiku vs ~$0.01 with Grok, both dwarfed by the main model cost (Claude Opus/Sonnet at $15–$75/MTok). Extraction runs in the background after each assistant turn, so the ~14s latency is invisible to users — retrieval uses Voyage AI embeddings, not the extraction provider. Consistency wins over speed for a memory system where every extracted fact persists across sessions.
 
 > **Why not a reasoning model?** During testing, a frontier reasoning model consumed all `max_completion_tokens` on internal chain-of-thought and returned empty output with `finish_reason: "length"` every single time. Reasoning models are the wrong tool for deterministic structured extraction.
 
