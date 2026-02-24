@@ -71,6 +71,12 @@ def call_xai(system: str, user: str) -> str:
     Records token usage to the cost ledger and activity log.
     Raises httpx.HTTPStatusError on non-2xx responses.
     """
+    if not XAI_API_KEY:
+        raise ValueError(
+            "EXTRACTION_PROVIDER is 'xai' but XAI_API_KEY is not set. "
+            "Add XAI_API_KEY to your .env file."
+        )
+
     t0 = time.monotonic()
     with httpx.Client(timeout=60.0) as client:
         response = client.post(
@@ -93,7 +99,13 @@ def call_xai(system: str, user: str) -> str:
         data = response.json()
     elapsed_ms = (time.monotonic() - t0) * 1000
 
-    raw: str = data["choices"][0]["message"].get("content") or ""
+    # Defensive parsing — match Google/Anthropic error handling pattern
+    raw: str = ""
+    try:
+        raw = data["choices"][0]["message"].get("content") or ""
+    except (KeyError, IndexError):
+        logger.warning("xai call: unexpected response structure: %r", str(data)[:300])
+
     logger.info("xai call model=%s elapsed=%.0fms tokens=%d/%d",
                 XAI_EXTRACTION_MODEL, elapsed_ms,
                 data.get("usage", {}).get("prompt_tokens", 0),
@@ -259,17 +271,29 @@ def call_anthropic(system: str, user: str) -> str:
     return raw.strip()
 
 
+_VALID_PROVIDERS = frozenset({"anthropic", "xai", "google"})
+
+
 def call_llm(system: str, user: str) -> str:
     """Route to the configured extraction provider.
 
     Dispatches to the appropriate provider function based on EXTRACTION_PROVIDER.
     All extraction callers should use this instead of provider-specific functions.
+
+    Note: Provider functions (call_xai, call_google, call_anthropic) are
+    synchronous-blocking. FastAPI callers must use ``_in_thread()`` or
+    equivalent to avoid blocking the event loop.
     """
+    if EXTRACTION_PROVIDER not in _VALID_PROVIDERS:
+        raise ValueError(
+            f"Invalid EXTRACTION_PROVIDER: {EXTRACTION_PROVIDER!r}. "
+            f"Expected one of: {', '.join(sorted(_VALID_PROVIDERS))}."
+        )
     if EXTRACTION_PROVIDER == "google":
         return call_google(system, user)
-    if EXTRACTION_PROVIDER == "anthropic":
-        return call_anthropic(system, user)
-    return call_xai(system, user)
+    if EXTRACTION_PROVIDER == "xai":
+        return call_xai(system, user)
+    return call_anthropic(system, user)
 
 
 # ── JSON parsing ───────────────────────────────────────────────────────────────

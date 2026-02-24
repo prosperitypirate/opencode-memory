@@ -13,7 +13,7 @@ export async function runIngest(
   log.info(`Run tag: ${cp.runTag}`);
 
   const result = await provider.ingest(sessions, cp.runTag, (sessionId, added, updated, done, durationMs) => {
-    const avgMs = durationMs; // per-session, not cumulative
+    // durationMs is per-session, not cumulative
     log.dim(`    +${added} added ~${updated} updated  (${(durationMs / 1000).toFixed(1)}s)`);
     emit({ type: "ingest_session", sessionId, added, updated, done, total: sessions.length, durationMs });
   });
