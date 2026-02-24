@@ -139,6 +139,15 @@ export const HTML = /* html */ `<!DOCTYPE html>
         <div class="score-sub" id="score-sub">awaiting results</div>
       </div>
       <div id="cats"></div>
+      <div id="timer-panel">
+        <div class="sidebar-title">Run Time</div>
+        <div id="timer-display" style="font-size:20px;font-weight:700;color:#fff;line-height:1;">—</div>
+        <div id="timer-sub" style="font-size:11px;color:var(--muted);margin-top:3px;">waiting</div>
+      </div>
+      <div id="ingest-panel" style="display:none">
+        <div class="sidebar-title">Ingest Speed</div>
+        <div id="ingest-metrics" style="font-size:12px;color:var(--text);"></div>
+      </div>
       <div id="retrieval-panel" style="display:none">
         <div class="sidebar-title">Retrieval Quality (K=20)</div>
         <div id="retr-metrics"></div>
@@ -170,6 +179,39 @@ const badgeRun  = document.getElementById("badge-run");
 const headerMeta= document.getElementById("header-meta");
 const retrievalPanel = document.getElementById("retrieval-panel");
 const retrMetrics    = document.getElementById("retr-metrics");
+const ingestPanel    = document.getElementById("ingest-panel");
+const ingestMetrics  = document.getElementById("ingest-metrics");
+const timerDisplay   = document.getElementById("timer-display");
+const timerSub       = document.getElementById("timer-sub");
+
+// Run timer state
+let runStartTs = 0;
+let timerInterval = null;
+
+function formatDuration(ms) {
+  const totalSecs = Math.floor(ms / 1000);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return h + "h " + String(m).padStart(2, "0") + "m " + String(s).padStart(2, "0") + "s";
+  return m + "m " + String(s).padStart(2, "0") + "s";
+}
+
+function startTimer() {
+  runStartTs = Date.now();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const elapsed = Date.now() - runStartTs;
+    if (timerDisplay) timerDisplay.textContent = formatDuration(elapsed);
+    if (timerSub) timerSub.textContent = "running";
+  }, 1000);
+}
+
+function stopTimer(finalMs) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if (timerDisplay) timerDisplay.textContent = formatDuration(finalMs);
+  if (timerSub) timerSub.textContent = "complete";
+}
 
 // Live score state
 const catState = {};  // { type: { correct, total } }
@@ -177,6 +219,9 @@ let totalCorrect = 0, totalDone = 0;
 
 // Live retrieval state
 let retrHitSum = 0, retrPrecSum = 0, retrMrrSum = 0, retrNdcgSum = 0, retrCount = 0;
+
+// Live ingest timing state
+const ingestDurations = [];
 
 function updateRetrieval(rm) {
   if (!rm) return;
@@ -311,12 +356,15 @@ function handle(ev) {
       retrMrrSum   = 0;
       retrNdcgSum  = 0;
       retrCount    = 0;
+      ingestDurations.length = 0;
       runDone      = false;
       feed.innerHTML = "";
       cats.innerHTML = '<div class="sidebar-title">By Category</div>';
       scoreBig.textContent = "—";
       scoreSub.textContent = "awaiting results";
       if (retrievalPanel) retrievalPanel.style.display = "none";
+      if (ingestPanel) ingestPanel.style.display = "none";
+      startTimer();
       badgeRun.textContent = ev.runId;
       badgeRun.style.display = "";
       badgeLive.textContent = "live";
@@ -346,14 +394,32 @@ function handle(ev) {
       }
       break;
 
-    case "ingest_session":
+    case "ingest_session": {
+      const timing = ev.durationMs ? " <span style='color:var(--cyan)'>(" + (ev.durationMs / 1000).toFixed(1) + "s)</span>" : "";
       appendRow(
         "⬆",
         ev.sessionId,
-        "+" + ev.added + " added  " + (ev.updated ? "~" + ev.updated + " updated" : ""),
+        "+" + ev.added + " added  " + (ev.updated ? "~" + ev.updated + " updated" : "") + timing,
         ev.done + "/" + ev.total
       );
+      // Update ingest sidebar
+      if (ev.durationMs) {
+        ingestDurations.push(ev.durationMs);
+        ingestPanel.style.display = "";
+        const sorted = [...ingestDurations].sort((a, b) => a - b);
+        const mean = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+        const total = sorted.reduce((s, v) => s + v, 0);
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+        ingestMetrics.innerHTML =
+          "<div>" + ev.done + "/" + ev.total + " sessions</div>" +
+          "<div style='margin-top:4px'>Total: <b>" + (total / 1000).toFixed(0) + "s</b></div>" +
+          "<div>Mean: <b>" + (mean / 1000).toFixed(1) + "s</b> / session</div>" +
+          "<div>Min: " + (min / 1000).toFixed(1) + "s · Max: " + (max / 1000).toFixed(1) + "s</div>" +
+          "<div style='margin-top:4px;color:var(--muted)'>ETA: ~" + Math.round((ev.total - ev.done) * mean / 1000) + "s remaining</div>";
+      }
       break;
+    }
 
     case "search_question":
       appendRow(
@@ -403,17 +469,20 @@ function handle(ev) {
       appendRow("🗑", "Cleanup", "deleted " + ev.deleted + " / " + ev.total, "");
       break;
 
-    case "run_complete":
+    case "run_complete": {
+      const finalMs = ev.durationMs || (Date.now() - runStartTs);
+      stopTimer(finalMs);
       setPhase("done");
       appendRow(
         "★",
-        "Run complete — " + Math.round(ev.accuracy * 100) + "% overall",
+        "Run complete — " + Math.round(ev.accuracy * 100) + "% overall  (" + formatDuration(finalMs) + ")",
         ev.correct + " / " + ev.total + " correct",
         ""
       );
       scoreBig.textContent = Math.round(ev.accuracy * 100) + "%";
-      scoreSub.textContent  = ev.correct + " / " + ev.total + " · run complete";
+      scoreSub.textContent  = ev.correct + " / " + ev.total + " · " + formatDuration(finalMs);
       break;
+    }
   }
 }
 

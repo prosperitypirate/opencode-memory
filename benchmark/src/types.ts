@@ -66,6 +66,10 @@ export interface IngestResult {
   memoriesAdded: number;
   memoriesUpdated: number;
   sessionIds: string[];
+  /** Per-session ingest duration in ms (extraction + contradiction detection + embedding) */
+  sessionDurations: number[];
+  /** Total wall-clock time for entire ingest phase in ms */
+  totalDurationMs: number;
 }
 
 export interface SearchResult {
@@ -79,7 +83,7 @@ export interface SearchResult {
   date?: string;
 }
 
-export type IngestProgressCallback = (sessionId: string, added: number, updated: number, done: number) => void;
+export type IngestProgressCallback = (sessionId: string, added: number, updated: number, done: number, durationMs: number) => void;
 
 export interface Provider {
   name: string;
@@ -183,10 +187,15 @@ export interface BenchmarkReport {
   evaluations: EvaluationResult[];
   /** Latency stats per pipeline phase */
   latency?: {
+    ingest: LatencyStats;
     search: LatencyStats;
     answer: LatencyStats;
     evaluate: LatencyStats;
   };
+  /** Total ingest wall-clock time in ms */
+  ingestTotalMs?: number;
+  /** Total wall-clock time for the entire benchmark run in ms */
+  totalDurationMs?: number;
   /** Aggregate retrieval metrics */
   retrieval?: AggregateRetrievalStats;
   /** Per-category retrieval metrics */
@@ -204,6 +213,9 @@ export interface Checkpoint {
   judgeModel: string;
   answeringModel: string;
   startedAt: string;
+  completedAt?: string;
+  /** Total wall-clock time for the entire benchmark run in ms */
+  totalDurationMs?: number;
   completedPhases: Phase[];
   ingestResult?: IngestResult;
   searchResults?: SearchPhaseResult[];

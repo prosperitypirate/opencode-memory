@@ -29,13 +29,35 @@ def validate_id(value: str, field_name: str = "id") -> str:
 # ── API credentials ────────────────────────────────────────────────────────────
 
 XAI_API_KEY: str = os.environ.get("XAI_API_KEY", "")
+GOOGLE_API_KEY: str = os.environ.get("GOOGLE_API_KEY", "")
+ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 VOYAGE_API_KEY: str = os.environ.get("VOYAGE_API_KEY", "")
 DATA_DIR: str = os.environ.get("DATA_DIR", "/data/memory")
+
+# ── Extraction provider ────────────────────────────────────────────────────────
+# "anthropic" (default) — Claude Haiku 4.5 via Anthropic Messages API (most consistent)
+# "xai"                 — Grok 4.1 Fast via api.x.ai (fastest, higher variance)
+# "google"              — Gemini 3 Flash via native generateContent API
+EXTRACTION_PROVIDER: str = os.environ.get("EXTRACTION_PROVIDER", "anthropic")
 
 # ── Model identifiers ──────────────────────────────────────────────────────────
 
 XAI_BASE_URL = "https://api.x.ai/v1"
-EXTRACTION_MODEL = "grok-4-1-fast-non-reasoning"
+XAI_EXTRACTION_MODEL = "grok-4-1-fast-non-reasoning"
+
+GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+GOOGLE_EXTRACTION_MODEL = "gemini-3-flash-preview"
+
+ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1"
+ANTHROPIC_EXTRACTION_MODEL = "claude-haiku-4-5-20251001"
+
+# Active model name — resolved from provider for telemetry/logging
+_MODEL_MAP = {
+    "google": GOOGLE_EXTRACTION_MODEL,
+    "anthropic": ANTHROPIC_EXTRACTION_MODEL,
+}
+EXTRACTION_MODEL = _MODEL_MAP.get(EXTRACTION_PROVIDER, XAI_EXTRACTION_MODEL)
+
 EMBEDDING_MODEL = "voyage-code-3"
 EMBEDDING_DIMS = 1024
 
@@ -81,10 +103,23 @@ VERSIONING_SKIP_TYPES: frozenset[str] = frozenset({"session-summary", "progress"
 MAX_SESSION_SUMMARIES = 3
 
 # ── Pricing (USD per million tokens) ──────────────────────────────────────────
-# Source: https://docs.x.ai/docs/models  (as of 2026-02)
-XAI_PRICE_INPUT_PER_M  = 0.20   # grok-4-1-fast-non-reasoning input
-XAI_PRICE_CACHED_PER_M = 0.05   # grok-4-1-fast-non-reasoning cached input
-XAI_PRICE_OUTPUT_PER_M = 0.50   # grok-4-1-fast-non-reasoning output
 
+# xAI — grok-4-1-fast-non-reasoning
+# Source: https://docs.x.ai/docs/models  (as of 2026-02)
+XAI_PRICE_INPUT_PER_M  = 0.20
+XAI_PRICE_CACHED_PER_M = 0.05
+XAI_PRICE_OUTPUT_PER_M = 0.50
+
+# Google — gemini-3-flash-preview
+# Source: https://ai.google.dev/gemini-api/docs/models  (as of 2026-02)
+GOOGLE_PRICE_INPUT_PER_M  = 0.50
+GOOGLE_PRICE_OUTPUT_PER_M = 3.00
+
+# Anthropic — claude-haiku-4-5
+# Source: https://docs.anthropic.com/en/docs/about-claude/models  (as of 2026-02)
+ANTHROPIC_PRICE_INPUT_PER_M  = 1.00
+ANTHROPIC_PRICE_OUTPUT_PER_M = 5.00
+
+# Voyage AI — voyage-code-3
 # Source: https://docs.voyageai.com/docs/pricing  (as of 2026-02)
-VOYAGE_PRICE_PER_M = 0.18       # voyage-code-3
+VOYAGE_PRICE_PER_M = 0.18

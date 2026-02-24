@@ -17,6 +17,7 @@ export function startLiveServer(): void {
 
   Bun.serve({
     port: LIVE_PORT,
+    idleTimeout: 255,  // max value — SSE connections are long-lived, don't kill them
     fetch(req) {
       const url = new URL(req.url);
 

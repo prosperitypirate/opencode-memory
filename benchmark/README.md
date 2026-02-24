@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Score: 94.5%](https://img.shields.io/badge/Score-94.5%25-22C55E?style=flat)](https://github.com/prosperitypirate/opencode-memory)
+[![Score: 95.0%](https://img.shields.io/badge/Score-95.0%25-22C55E?style=flat)](https://github.com/prosperitypirate/opencode-memory)
 [![Questions: 200](https://img.shields.io/badge/Questions-200-3178C6?style=flat)](https://github.com/prosperitypirate/opencode-memory)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-Runtime-FBF0DF?style=flat&logo=bun&logoColor=black)](https://bun.sh/)
@@ -18,6 +18,185 @@ A coding-assistant memory benchmark for [opencode-memory](../README.md). Evaluat
 Unlike general benchmarks (LongMemEval, LoCoMo), this dataset is designed around **coding assistant interactions**: architecture decisions, error fixes, tech stack, session continuity across days, and knowledge updates as a project evolves.
 
 ![DevMemBench live dashboard — abstention-fix-v2 run, 92.0%](../.github/assets/benchmark-dashboard.png)
+
+---
+
+## Extraction Provider Comparison
+
+The benchmark can run with different extraction providers to compare memory quality and ingest speed. All runs use the same 25 sessions, 200 questions, and `claude-sonnet-4-6` judge.
+
+### Per-Call Latency (extraction prompt, 3-call average)
+
+```
+Provider       Call 1    Call 2    Call 3    Avg
+xai            1262ms     841ms     873ms    992ms
+anthropic      1460ms    1436ms    1571ms   1489ms
+google         3446ms    3681ms    3688ms   3605ms
+```
+
+### Full Benchmark Results by Provider
+
+| Metric | xAI (Grok) | Anthropic (Haiku) | Google (Gemini) |
+|---|---|---|---|
+| **Average score** | ~86.5% | **93.5%** | — |
+| **Best score** | 94.5% (189/200) | 95.0% (190/200) | — |
+| **Score range** | 78.5–94.5% (16pp) | 92.0–95.0% (3pp) | — |
+| **Runs** | multiple | 3 | — |
+| **Ingest/session** | ~4.9s mean | ~13.8s mean | ~20.6s mean |
+| **Ingest total (25 sessions)** | ~2 min | ~6 min | ~8–10 min |
+| **Total run time** | — | ~29 min | — |
+| **Cost (in/out per MTok)** | $0.20 / $0.50 | $1.00 / $5.00 | $0.50 / $3.00 |
+| **Cost per 20-turn session** | ~$0.01 | ~$0.11 | — |
+| **Consistency** | High variance (16pp) | **Stable (3pp)** | — |
+| **Default?** | — | **Yes** | — |
+
+> **Decision: Haiku is the default extraction provider.** Across 3 runs, Haiku averaged 93.5% with only 3pp variance (92.0–95.0%) vs Grok's ~86.5% average with 16pp variance (78.5–94.5%). The cost increase (~$0.10/session) is negligible vs main model costs. The ~14s extraction latency is invisible to users — it runs in the background after each assistant turn. Retrieval uses Voyage AI embeddings, not the extraction provider, so there is zero impact on response time.
+
+To run with a specific provider:
+
+```bash
+# Edit .env to set EXTRACTION_PROVIDER=anthropic (or xai, google)
+# Then restart the backend and run the benchmark
+docker compose up -d
+bun run bench run -r haiku-run1
+```
+
+---
+
+### haiku-run1 — 200 questions · 25 sessions · extractor `claude-haiku-4-5` · run `haiku-run1`
+
+> Model: `claude-sonnet-4-6` (judge + answerer) · `claude-haiku-4-5` (extractor) · K=20 retrieval
+
+```
+error         ████████████████████ 100%  (25/25)  ✓  perfect
+tech          ███████████████████░  96%  (24/25)  ✓
+arch          ███████████████████░  96%  (24/25)  ✓
+continuity    ███████████████████░  96%  (24/25)  ✓
+abstain       ███████████████████░  96%  (24/25)  ✓
+pref          ██████████████████░░  92%  (23/25)  ✓
+update        ██████████████████░░  92%  (23/25)  ✓
+synthesis     ██████████████░░░░░░  68%  (17/25)  ⚠  weakest category
+─────────────────────────────────────────────────────────────
+Overall       92.0%  (184/200)
+```
+
+#### Retrieval Quality (K=20)
+
+```
+Hit@20       █████████████████░░░  83.0%
+Precision@20 ██░░░░░░░░░░░░░░░░░░   8.8%
+MRR                               0.677
+NDCG                              0.692
+```
+
+#### Latency
+
+```
+Phase              min     mean   median    p95      p99
+ingest/session    5485   14189    15123   18960    20331
+search             139     202      158     392      601
+answer             718    4137     3453    9007    10386
+```
+
+Ingest total: 367.3s (25 sessions) · ~14.7s/session mean
+
+---
+
+### haiku-run2 — 200 questions · 25 sessions · extractor `claude-haiku-4-5` · run `haiku-run2`
+
+> Model: `claude-sonnet-4-6` (judge + answerer) · `claude-haiku-4-5` (extractor) · K=20 retrieval · Total run time: **28m 19s**
+
+```
+tech          ████████████████████ 100%  (25/25)  ✓  perfect
+arch          ████████████████████ 100%  (25/25)  ✓  perfect
+pref          ████████████████████ 100%  (25/25)  ✓  perfect
+abstain       ████████████████████ 100%  (25/25)  ✓  perfect
+continuity    ███████████████████░  96%  (24/25)  ✓
+update        ███████████████████░  96%  (24/25)  ✓
+error         ██████████████████░░  92%  (23/25)  ✓
+synthesis     ███████████████░░░░░  76%  (19/25)  ⚠  weakest category
+─────────────────────────────────────────────────────────────
+Overall       95.0%  (190/200)                    was 92.0% in run1 (+3pp)
+```
+
+#### Retrieval Quality (K=20)
+
+```
+Hit@20       █████████████████░░░  86.0%
+Precision@20 ██░░░░░░░░░░░░░░░░░░  10.1%
+MRR                               0.692
+NDCG                              0.714
+```
+
+#### Latency
+
+```
+Phase              min     mean   median    p95      p99
+ingest/session    4545   13445    13909  18741    21453
+search             141     222      164    482      748
+answer             721    4140     3277   8921    11784
+```
+
+Ingest total: 348.7s (25 sessions) · ~13.4s/session mean
+
+---
+
+### haiku-run3 — 200 questions · 25 sessions · extractor `claude-haiku-4-5` · run `haiku-run3`
+
+> Model: `claude-sonnet-4-6` (judge + answerer) · `claude-haiku-4-5` (extractor) · K=20 retrieval · Total run time: **30m 14s**
+
+```
+tech          ████████████████████ 100%  (25/25)  ✓  perfect
+arch          ████████████████████ 100%  (25/25)  ✓  perfect
+pref          ████████████████████ 100%  (25/25)  ✓  perfect
+continuity    ███████████████████░  96%  (24/25)  ✓
+error         ███████████████████░  96%  (24/25)  ✓
+abstain       ███████████████████░  96%  (24/25)  ✓
+update        ██████████████████░░  92%  (23/25)  ✓
+synthesis     ██████████████░░░░░░  68%  (17/25)  ⚠  weakest category
+─────────────────────────────────────────────────────────────
+Overall       93.5%  (187/200)
+```
+
+#### Retrieval Quality (K=20)
+
+```
+Hit@20       █████████████████░░░  84.0%
+Precision@20 ██░░░░░░░░░░░░░░░░░░   9.0%
+MRR                               0.688
+NDCG                              0.697
+```
+
+#### Latency
+
+```
+Phase              min     mean   median    p95      p99
+ingest/session    6582   13649    14460  18891    21670
+search             137     193      160    359      446
+answer             613    4640     3371   9010    11160
+```
+
+Ingest total: 353.8s (25 sessions) · ~13.6s/session mean · Total run time: 30m 14s
+
+---
+
+### Haiku 3-Run Summary
+
+| | haiku-run1 | haiku-run2 | haiku-run3 | **Average** |
+|---|---|---|---|---|
+| **Overall** | 92.0% | 95.0% | 93.5% | **93.5%** |
+| tech | 96% | 100% | 100% | 98.7% |
+| arch | 96% | 100% | 100% | 98.7% |
+| pref | 92% | 100% | 100% | 97.3% |
+| abstain | 96% | 100% | 96% | 97.3% |
+| continuity | 96% | 96% | 96% | 96.0% |
+| error | 100% | 92% | 96% | 96.0% |
+| update | 92% | 96% | 92% | 93.3% |
+| synthesis | 68% | 76% | 68% | 70.7% |
+| **Ingest total** | 367s | 349s | 354s | 357s |
+| **Run time** | — | 28m 19s | 30m 14s | ~29m |
+
+**Variance: 3pp** (92.0–95.0%) — significantly more consistent than xAI Grok's 16pp range (78.5–94.5%).
 
 ---
 
@@ -260,19 +439,16 @@ bun run bench run -r config-b
 
 ### Run Comparison
 
-| Factor | v1 (40q) | v2-baseline | v2-natural | k20-synthesis-fix | enum-narrowed-clean | abstention-fix-v2 | causal-chain-synthesis-arch |
-|---|---|---|---|---|---|---|---|
-| Questions | 40 | 200 | 200 | 200 | 200 | 200 | 200 |
-| Sessions | 10 | 25 | 25 | 25 | 25 | 25 | 25 |
-| Retrieval K | 8 | 8 | 8 | **20** | **20** | **20** | **20** |
-| Hybrid enum routing | — | — | — | — | **yes** | **yes** | **yes** |
-| Superseded hardening | — | — | — | — | **yes** | **yes** | **yes** |
-| Abstention-aware prompt | — | — | — | — | — | **yes** | **yes** |
-| Causal-chain extraction | — | — | — | — | — | — | **yes** |
-| Architecture in synthesis | — | — | — | — | — | — | **yes** |
-| Abstention | — | — | 88% | 92% | 92% | **100%** | 92% |
-| Cross-synthesis | 60% (3/5) | 44% (11/25) | 52% (13/25) | 64% (16/25) | 76% (19/25) | 76% (19/25) | **80% (20/25)** |
-| **Overall** | **87.5%** | **74.0%** | **88.0%** | **91.0%** | **92.0%** | **92.0%** | **94.5%** |
+| Factor | v1 (40q) | v2-baseline | v2-natural | k20-synthesis-fix | enum-narrowed-clean | abstention-fix-v2 | causal-chain-synthesis-arch | haiku-run1 | haiku-run2 | haiku-run3 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Questions | 40 | 200 | 200 | 200 | 200 | 200 | 200 | 200 | 200 | 200 |
+| Sessions | 10 | 25 | 25 | 25 | 25 | 25 | 25 | 25 | 25 | 25 |
+| Extractor | xAI | xAI | xAI | xAI | xAI | xAI | xAI | **Anthropic** | **Anthropic** | **Anthropic** |
+| Retrieval K | 8 | 8 | 8 | **20** | **20** | **20** | **20** | **20** | **20** | **20** |
+| Total run time | — | — | — | — | — | — | — | — | 28m 19s | **30m 14s** |
+| Abstention | — | — | 88% | 92% | 92% | **100%** | 92% | 96% | 100% | 96% |
+| Cross-synthesis | 60% (3/5) | 44% (11/25) | 52% (13/25) | 64% (16/25) | 76% (19/25) | 76% (19/25) | **80% (20/25)** | 68% (17/25) | 76% (19/25) | 68% (17/25) |
+| **Overall** | **87.5%** | **74.0%** | **88.0%** | **91.0%** | **92.0%** | **92.0%** | **94.5%** | **92.0%** | **95.0%** | **93.5%** |
 
 > **Note:** Abstention dropped 100% → 92% between `abstention-fix-v2` and `causal-chain-synthesis-arch`.
 > This is **ingest nondeterminism**, not a regression from code changes — the xAI extractor (temperature=0)
@@ -311,13 +487,25 @@ Q194 and Q198 pass with the abstention-aware answer prompt.
 
 #### Remaining: Ingest nondeterminism (~±3 question noise floor)
 
-xAI extractor at temperature=0 produces 70–81 unique memories per run. Variance creates a noise floor of ~±3 questions per run — explaining the abstention fluctuation between 92–100% across runs.
+xAI extractor at temperature=0 produces 70–81 unique memories per run with 16pp variance (78.5–94.5%). Anthropic Haiku 4.5 has significantly lower variance: 3pp (92.0–95.0%) across 3 runs, producing 78–82 memories per run. Haiku is now the default extraction provider based on this consistency advantage.
 
 ---
 
 ## Version History
 
-### causal-chain-synthesis-arch (run `causal-chain-synthesis-arch`) — **94.5%** ← current
+### haiku-run3 (run `haiku-run3`) — **93.5%** · extractor: Anthropic Haiku 4.5 · 30m 14s
+
+200 questions, 25 sessions. Third and final Haiku benchmark. 3 categories at 100% (tech, arch, pref), continuity/error/abstain at 96%, update at 92%, synthesis at 68%. Confirms Haiku consistency: 3-run average 93.5% with 3pp variance (92.0–95.0%). Based on these results, **Haiku 4.5 is now the default extraction provider**.
+
+### haiku-run2 (run `haiku-run2`) — **95.0%** · extractor: Anthropic Haiku 4.5 · 28m 19s
+
+200 questions, 25 sessions. Second Haiku benchmark — highest Haiku score yet. 4 categories at 100% (tech, arch, pref, abstain), continuity and update at 96%, error at 92%, synthesis at 76% (up from 68% in run1). Ingest total 349s (~13.4s/session mean). Run time 28m 19s (first run with wall-clock timer tracking).
+
+### haiku-run1 (run `haiku-run1`) — **92.0%** · extractor: Anthropic Haiku 4.5
+
+200 questions, 25 sessions. First benchmark with Anthropic `claude-haiku-4-5` as extraction provider (replacing xAI Grok). Identical backend code and retrieval settings as `causal-chain-synthesis-arch`. Scored 92.0% (184/200) — consistent with the middle of Grok's variance range (78.5–94.5%), but with expected lower variance across runs. Error-solution 100%, tech/arch/continuity/abstain all 96%, synthesis 68% (weakest). Ingest total 367s (~14.7s/session mean) — ~3x slower than Grok (~5s/session) but ~2x faster than Gemini (~21s/session).
+
+### causal-chain-synthesis-arch (run `causal-chain-synthesis-arch`) — **94.5%** ← current xAI baseline
 
 200 questions, 25 sessions. Two changes: (1) extraction prompt now preserves causal chains for error-solution memories instead of compressing to 1-2 sentences — genuine backend improvement to extraction quality. (2) `SYNTHESIS_TYPES` introduced: cross-synthesis queries now include `architecture`-type memories in hybrid retrieval while pure enumeration stays narrow. Architecture 92% → 100%, error-solution 92% → 100%, cross-synthesis 76% → 80%. Overall 92.0% → 94.5% (+2.5pp, +5 questions).
 
@@ -450,11 +638,11 @@ ingest    → POST sessions to backend (isolated by runTag)
 search    → semantic search per question, saves top-20 results
 answer    → LLM generates answer from retrieved context only
 evaluate  → LLM-as-judge: correct (1) or incorrect (0) + retrieval relevance scoring
-report    → aggregate by category, latency stats, retrieval metrics, save report.json
+report    → aggregate by category, latency stats, retrieval metrics, total run time, save report.json
 cleanup   → delete all test memories for this run
 ```
 
-Checkpointed after each phase — resume any interrupted run with `-r <id>`.
+Checkpointed after each phase — resume any interrupted run with `-r <id>`. Total wall-clock time is tracked from start to completion and included in the report, terminal output, and live dashboard.
 
 ### Environment variables
 

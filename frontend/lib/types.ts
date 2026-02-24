@@ -37,14 +37,17 @@ export interface Stats {
   users: number;
 }
 
+export interface LLMProviderCosts {
+  calls: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: number;
+}
+
 export interface Costs {
-  xai: {
-    calls: number;
-    prompt_tokens: number;
-    cached_tokens: number;
-    completion_tokens: number;
-    cost_usd: number;
-  };
+  xai: LLMProviderCosts & { cached_tokens: number };
+  google?: LLMProviderCosts;
+  anthropic?: LLMProviderCosts;
   voyage: {
     calls: number;
     tokens: number;

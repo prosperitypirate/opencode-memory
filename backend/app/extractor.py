@@ -1,8 +1,15 @@
 """
-xAI extraction layer — LLM calls, JSON parsing, and memory extraction logic.
+Multi-provider extraction layer — LLM calls, JSON parsing, and memory extraction logic.
+
+Supports xAI (Grok), Google (Gemini), and Anthropic (Claude) as extraction providers,
+configurable via EXTRACTION_PROVIDER env var. All callers use call_llm() which dispatches
+to the active provider.
 
 Responsibilities:
-  call_xai()                  — single xAI chat completion, records telemetry
+  call_llm()                  — dispatch to active provider (xAI, Google, or Anthropic)
+  call_xai()                  — xAI chat completion, records telemetry
+  call_google()               — Gemini generateContent via native REST API
+  call_anthropic()            — Anthropic Messages API, records telemetry
   parse_json_array()          — robustly parse a JSON array from raw LLM output
   extract_memories()          — drive extraction using the right prompt mode
   condense_to_learned_pattern() — age an old session-summary into a learned-pattern
@@ -10,17 +17,29 @@ Responsibilities:
 
 import json
 import logging
+import time
 from typing import Optional
 
 import httpx
 
 from .config import (
+    EXTRACTION_PROVIDER,
     XAI_API_KEY,
     XAI_BASE_URL,
-    EXTRACTION_MODEL,
+    XAI_EXTRACTION_MODEL,
     XAI_PRICE_INPUT_PER_M,
     XAI_PRICE_CACHED_PER_M,
     XAI_PRICE_OUTPUT_PER_M,
+    GOOGLE_API_KEY,
+    GOOGLE_BASE_URL,
+    GOOGLE_EXTRACTION_MODEL,
+    GOOGLE_PRICE_INPUT_PER_M,
+    GOOGLE_PRICE_OUTPUT_PER_M,
+    ANTHROPIC_API_KEY,
+    ANTHROPIC_BASE_URL,
+    ANTHROPIC_EXTRACTION_MODEL,
+    ANTHROPIC_PRICE_INPUT_PER_M,
+    ANTHROPIC_PRICE_OUTPUT_PER_M,
 )
 from .prompts import (
     CONDENSE_SYSTEM,
@@ -52,6 +71,13 @@ def call_xai(system: str, user: str) -> str:
     Records token usage to the cost ledger and activity log.
     Raises httpx.HTTPStatusError on non-2xx responses.
     """
+    if not XAI_API_KEY:
+        raise ValueError(
+            "EXTRACTION_PROVIDER is 'xai' but XAI_API_KEY is not set. "
+            "Add XAI_API_KEY to your .env file."
+        )
+
+    t0 = time.monotonic()
     with httpx.Client(timeout=60.0) as client:
         response = client.post(
             f"{XAI_BASE_URL}/chat/completions",
@@ -60,7 +86,7 @@ def call_xai(system: str, user: str) -> str:
                 "Content-Type": "application/json",
             },
             json={
-                "model": EXTRACTION_MODEL,
+                "model": XAI_EXTRACTION_MODEL,
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user",   "content": user},
@@ -71,9 +97,19 @@ def call_xai(system: str, user: str) -> str:
         )
         response.raise_for_status()
         data = response.json()
+    elapsed_ms = (time.monotonic() - t0) * 1000
 
-    raw: str = data["choices"][0]["message"].get("content") or ""
-    logger.debug("xai call model=%s raw=%r", EXTRACTION_MODEL, raw[:300])
+    # Defensive parsing — match Google/Anthropic error handling pattern
+    raw: str = ""
+    try:
+        raw = data["choices"][0]["message"].get("content") or ""
+    except (KeyError, IndexError):
+        logger.warning("xai call: unexpected response structure: %r", str(data)[:300])
+
+    logger.info("xai call model=%s elapsed=%.0fms tokens=%d/%d",
+                XAI_EXTRACTION_MODEL, elapsed_ms,
+                data.get("usage", {}).get("prompt_tokens", 0),
+                data.get("usage", {}).get("completion_tokens", 0))
 
     try:
         usage = data.get("usage", {})
@@ -91,6 +127,173 @@ def call_xai(system: str, user: str) -> str:
         logger.debug("Telemetry record error (xai): %s", e)
 
     return raw.strip()
+
+
+def call_google(system: str, user: str) -> str:
+    """Make a Gemini generateContent call via the native REST API.
+
+    Uses the direct endpoint (no OpenAI compatibility layer) for maximum speed:
+    - POST /v1beta/models/{model}:generateContent
+    - Auth via x-goog-api-key header
+    - system_instruction for system prompt
+    - generationConfig.responseMimeType for native JSON mode
+
+    Records token usage to the cost ledger and activity log.
+    Raises httpx.HTTPStatusError on non-2xx responses.
+    """
+    if not GOOGLE_API_KEY:
+        raise ValueError(
+            "EXTRACTION_PROVIDER is 'google' but GOOGLE_API_KEY is not set. "
+            "Add GOOGLE_API_KEY to your .env file."
+        )
+
+    t0 = time.monotonic()
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            f"{GOOGLE_BASE_URL}/models/{GOOGLE_EXTRACTION_MODEL}:generateContent",
+            headers={
+                "x-goog-api-key": GOOGLE_API_KEY,
+                "Content-Type": "application/json",
+            },
+            json={
+                "system_instruction": {
+                    "parts": [{"text": system}],
+                },
+                "contents": [
+                    {
+                        "parts": [{"text": user}],
+                    },
+                ],
+                "generationConfig": {
+                    "temperature": 0,
+                    "maxOutputTokens": 2000,
+                    "responseMimeType": "application/json",
+                },
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+    elapsed_ms = (time.monotonic() - t0) * 1000
+
+    # Native API response: candidates[0].content.parts[0].text
+    raw: str = ""
+    try:
+        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        logger.warning("google call: unexpected response structure: %r", str(data)[:300])
+
+    # Token usage: usageMetadata.promptTokenCount / candidatesTokenCount
+    usage = data.get("usageMetadata", {})
+    prompt_tokens     = usage.get("promptTokenCount", 0)
+    completion_tokens = usage.get("candidatesTokenCount", 0)
+
+    logger.info("google call model=%s elapsed=%.0fms tokens=%d/%d",
+                GOOGLE_EXTRACTION_MODEL, elapsed_ms, prompt_tokens, completion_tokens)
+
+    try:
+        cost = (
+            prompt_tokens     * GOOGLE_PRICE_INPUT_PER_M  / 1_000_000
+            + completion_tokens * GOOGLE_PRICE_OUTPUT_PER_M / 1_000_000
+        )
+        ledger.record_google(prompt_tokens, completion_tokens)
+        activity_log.record_google(prompt_tokens, completion_tokens, cost)
+    except Exception as e:
+        logger.debug("Telemetry record error (google): %s", e)
+
+    return raw.strip()
+
+
+def call_anthropic(system: str, user: str) -> str:
+    """Make a single Anthropic Messages API call and return the raw content string.
+
+    Uses the Anthropic-native format (NOT OpenAI-compatible):
+    - POST /v1/messages
+    - Auth via x-api-key header + anthropic-version header
+    - system prompt is a top-level field (not in messages array)
+    - No native JSON mode — relies on system prompt instruction
+
+    Records token usage to the cost ledger and activity log.
+    Raises httpx.HTTPStatusError on non-2xx responses.
+    """
+    if not ANTHROPIC_API_KEY:
+        raise ValueError(
+            "EXTRACTION_PROVIDER is 'anthropic' but ANTHROPIC_API_KEY is not set. "
+            "Add ANTHROPIC_API_KEY to your .env file."
+        )
+
+    t0 = time.monotonic()
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            f"{ANTHROPIC_BASE_URL}/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": ANTHROPIC_EXTRACTION_MODEL,
+                "max_tokens": 2000,
+                "temperature": 0,
+                "system": system,
+                "messages": [
+                    {"role": "user", "content": user},
+                ],
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+    elapsed_ms = (time.monotonic() - t0) * 1000
+
+    # Response format: content[0].text
+    raw: str = ""
+    try:
+        raw = data["content"][0]["text"]
+    except (KeyError, IndexError):
+        logger.warning("anthropic call: unexpected response structure: %r", str(data)[:300])
+
+    usage = data.get("usage", {})
+    prompt_tokens     = usage.get("input_tokens", 0)
+    completion_tokens = usage.get("output_tokens", 0)
+
+    logger.info("anthropic call model=%s elapsed=%.0fms tokens=%d/%d",
+                ANTHROPIC_EXTRACTION_MODEL, elapsed_ms, prompt_tokens, completion_tokens)
+
+    try:
+        cost = (
+            prompt_tokens     * ANTHROPIC_PRICE_INPUT_PER_M  / 1_000_000
+            + completion_tokens * ANTHROPIC_PRICE_OUTPUT_PER_M / 1_000_000
+        )
+        ledger.record_anthropic(prompt_tokens, completion_tokens)
+        activity_log.record_anthropic(prompt_tokens, completion_tokens, cost)
+    except Exception as e:
+        logger.debug("Telemetry record error (anthropic): %s", e)
+
+    return raw.strip()
+
+
+_VALID_PROVIDERS = frozenset({"anthropic", "xai", "google"})
+
+
+def call_llm(system: str, user: str) -> str:
+    """Route to the configured extraction provider.
+
+    Dispatches to the appropriate provider function based on EXTRACTION_PROVIDER.
+    All extraction callers should use this instead of provider-specific functions.
+
+    Note: Provider functions (call_xai, call_google, call_anthropic) are
+    synchronous-blocking. FastAPI callers must use ``_in_thread()`` or
+    equivalent to avoid blocking the event loop.
+    """
+    if EXTRACTION_PROVIDER not in _VALID_PROVIDERS:
+        raise ValueError(
+            f"Invalid EXTRACTION_PROVIDER: {EXTRACTION_PROVIDER!r}. "
+            f"Expected one of: {', '.join(sorted(_VALID_PROVIDERS))}."
+        )
+    if EXTRACTION_PROVIDER == "google":
+        return call_google(system, user)
+    if EXTRACTION_PROVIDER == "xai":
+        return call_xai(system, user)
+    return call_anthropic(system, user)
 
 
 # ── JSON parsing ───────────────────────────────────────────────────────────────
@@ -146,7 +349,7 @@ def extract_memories(
     summary_mode: bool = False,
     init_mode: bool = False,
 ) -> list[dict]:
-    """Call xAI to extract typed memory facts from *messages*.
+    """Call the configured LLM provider to extract typed memory facts from *messages*.
 
     Returns a list of ``{"memory": str, "type": str}`` dicts.
 
@@ -173,11 +376,11 @@ def extract_memories(
     truncated = conversation[:_MAX_CONTENT_CHARS]
 
     if init_mode:
-        raw = call_xai(INIT_EXTRACTION_SYSTEM, INIT_EXTRACTION_USER.format(content=truncated))
+        raw = call_llm(INIT_EXTRACTION_SYSTEM, INIT_EXTRACTION_USER.format(content=truncated))
     elif summary_mode:
-        raw = call_xai(SUMMARY_SYSTEM, SUMMARY_USER.format(conversation=truncated))
+        raw = call_llm(SUMMARY_SYSTEM, SUMMARY_USER.format(conversation=truncated))
     else:
-        raw = call_xai(EXTRACTION_SYSTEM, EXTRACTION_USER.format(conversation=truncated))
+        raw = call_llm(EXTRACTION_SYSTEM, EXTRACTION_USER.format(conversation=truncated))
 
     facts = parse_json_array(raw)
     # Attach the raw source text to every fact so the route can store it alongside
@@ -202,7 +405,7 @@ def detect_contradictions(new_memory: str, candidates: list[dict]) -> list[str]:
             f"- ID: {c['id']} | {c['memory']}"
             for c in candidates
         )
-        raw = call_xai(
+        raw = call_llm(
             CONTRADICTION_SYSTEM,
             CONTRADICTION_USER.format(
                 new_memory=new_memory,
@@ -231,7 +434,7 @@ def detect_contradictions(new_memory: str, candidates: list[dict]) -> list[str]:
 def condense_to_learned_pattern(summary_text: str) -> Optional[dict]:
     """Condense an old session-summary string into a compact learned-pattern memory."""
     try:
-        raw   = call_xai(CONDENSE_SYSTEM, CONDENSE_USER.format(summary=summary_text[:_MAX_SUMMARY_CHARS]))
+        raw   = call_llm(CONDENSE_SYSTEM, CONDENSE_USER.format(summary=summary_text[:_MAX_SUMMARY_CHARS]))
         items = parse_json_array(raw)
         if items:
             return items[0]

@@ -17,6 +17,8 @@ The agent learns from every session automatically — no commands, no manual sav
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![LanceDB](https://img.shields.io/badge/LanceDB-Vector_DB-CF3CFF?style=flat)](https://lancedb.com/)
 [![xAI Grok](https://img.shields.io/badge/xAI-Grok-000000?style=flat&logo=x&logoColor=white)](https://x.ai/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Haiku-D97706?style=flat)](https://anthropic.com)
+[![Google Gemini](https://img.shields.io/badge/Google-Gemini-4285F4?style=flat&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Voyage AI](https://img.shields.io/badge/Voyage_AI-Code_Embeddings-5B6BF5?style=flat)](https://www.voyageai.com/)
 [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-100%25_Local-22C55E?style=flat&logo=homeassistant&logoColor=white)](https://github.com/prosperitypirate/opencode-memory)
 [![OpenCode Plugin](https://img.shields.io/badge/OpenCode-Plugin-FF6B35?style=flat)](https://opencode.ai)
@@ -71,6 +73,7 @@ The goal is not a better memory bank.
 ## Features
 
 - **Fully automatic** — memories save after every assistant turn with zero user action
+- **Multi-provider extraction** — choose between xAI Grok (fastest), Anthropic Haiku (most consistent), or Google Gemini via a single env var
 - **100% local** — LanceDB runs embedded in-process; all data lives in a Docker volume on your machine
 - **Always-fresh context** — the `[MEMORY]` block is injected into the system prompt on every LLM call via `system.transform` hook, not as a one-time message part — zero token accumulation, rebuilt fresh each turn
 - **Per-turn semantic refresh** — on every user message, a semantic search updates the "Relevant to Current Task" section to match the current conversation topic — the agent always sees context aligned to what you're asking about right now
@@ -95,7 +98,7 @@ The goal is not a better memory bank.
 |---|---|---|---|---|
 | **Storage** | Local (LanceDB embedded) | Markdown files in repo | Supermemory cloud | Local (Qdrant) |
 | **Embeddings** | Voyage `voyage-code-3` | None | Cloud | OpenAI `text-embedding-3-large` |
-| **Extraction** | xAI Grok (automatic) | LLM via `/save` (manual) | Cloud | OpenAI `gpt-4o` |
+| **Extraction** | Multi-provider (xAI / Anthropic / Google) | LLM via `/save` (manual) | Cloud | OpenAI `gpt-4o` |
 | **User action required** | ❌ Zero | ✅ `/load` + `/save` each session | ❌ Zero | ❌ Zero |
 | **Data privacy** | ✅ 100% local | ✅ 100% local | ❌ Cloud | ✅ Local |
 | **Code-optimised embeddings** | ✅ | ❌ | ❌ | ❌ |
@@ -116,7 +119,7 @@ The goal is not a better memory bank.
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Runs the memory server and dashboard | [docker.com](https://www.docker.com/products/docker-desktop/) |
 | [Bun](https://bun.sh) | Builds the OpenCode plugin | `curl -fsSL https://bun.sh/install \| bash` |
 | [OpenCode](https://opencode.ai) | The AI coding agent this extends | `npm i -g opencode-ai` |
-| xAI API key | Memory extraction via Grok | [console.x.ai](https://console.x.ai) |
+| Extraction API key | Memory extraction — pick one provider (see below) | [console.x.ai](https://console.x.ai) · [console.anthropic.com](https://console.anthropic.com) · [aistudio.google.com](https://aistudio.google.com/apikey) |
 | Voyage AI API key | Code embeddings | [voyageai.com](https://www.voyageai.com) — free tier available |
 
 ---
@@ -141,17 +144,26 @@ cd ..                    # back to repo root
 cp .env.example .env
 ```
 
-Open `.env` and fill in your keys:
+Open `.env` and add your API keys:
 
 ```env
-# xAI API key — used for memory extraction (grok-4-1-fast-non-reasoning)
-# Get yours at: https://console.x.ai
-XAI_API_KEY=xai-...
+# ── Extraction provider ───────────────────────────────────────
+# "anthropic" — Claude Haiku 4.5 · default · most consistent (93.5% avg benchmark)
+# "xai"       — Grok 4.1 Fast · fastest · higher run-to-run variance
+# "google"    — Gemini 3 Flash · native JSON mode
+EXTRACTION_PROVIDER=anthropic
+
+# API key for your chosen provider (only one required)
+ANTHROPIC_API_KEY=sk-ant-...  # https://console.anthropic.com/settings/keys
+# XAI_API_KEY=                # https://console.x.ai
+# GOOGLE_API_KEY=             # https://aistudio.google.com/apikey
 
 # Voyage AI API key — used for code embeddings (voyage-code-3)
 # Get yours at: https://www.voyageai.com  (free tier available)
 VOYAGE_API_KEY=pa-...
 ```
+
+To switch providers later, change `EXTRACTION_PROVIDER` and ensure the matching API key is set, then restart: `docker compose up -d`.
 
 > **Note:** The Docker container reads keys directly from `.env` via `env_file`. Do not export these in your shell — a shell environment variable will override the file and the server won't pick up your key.
 
@@ -208,7 +220,104 @@ The installer automatically:
 
 ---
 
-### Step 5 — Start a session
+### Step 5 — Add agent instructions (recommended)
+
+The plugin works without this step — memories save and inject automatically. But adding agent instructions to `~/.config/opencode/AGENTS.md` significantly improves behavior: the agent understands what the `[MEMORY]` block is, uses the `memory` tool correctly, never announces memory operations, and proactively searches for relevant context.
+
+Create (or append to) `~/.config/opencode/AGENTS.md` with the following:
+
+<details>
+<summary>Click to expand the recommended AGENTS.md snippet</summary>
+
+````markdown
+# Memory System
+
+You have a **persistent, self-hosted memory system** that works automatically in the background. It uses LanceDB + Voyage AI embeddings, running locally at `http://localhost:8020`.
+
+## How it works (fully automatic — no user action needed)
+
+**On every LLM call**, a `[MEMORY]` block is rebuilt and injected into the system prompt via `system.transform` hook. It contains:
+- **Project Brief** — what the project is, its purpose (includes project-config)
+- **Architecture** — system design, component structure
+- **Tech Context** — stack, tools, languages, dependencies
+- **Product Context** — features, goals, product decisions
+- **Progress & Status** — current state, what's done, what's next
+- **Last Session** — summary of the previous conversation
+- **User Preferences** — personal cross-project preferences
+- **Relevant to Current Task** — semantically matched memories with similarity % and date `[XX%, YYYY-MM-DD]`
+
+**On new projects** (zero memories), the plugin silently reads `README.md`, `package.json`, `docker-compose.yml`, etc. and extracts memories automatically — completely invisible to the user.
+
+**After every assistant turn**, the plugin extracts atomic typed facts from the last 8 messages and stores them. This is the primary memory capture mechanism.
+
+**Every 5 turns**, a session summary is additionally auto-saved.
+
+**Per-turn semantic refresh**: On turns 2+, the "Relevant to Current Task" section is re-searched against the current user message, so context stays aligned with what the user is asking about right now.
+
+**Compaction survival**: When context is compacted (at ~80% usage), the plugin injects memories into the compaction summary, then triggers a full [MEMORY] block rebuild on the next turn. Memory is never lost to compaction.
+
+**Privacy**: Content wrapped in `<private>...</private>` tags is stripped before extraction. Nothing inside private tags leaves the machine.
+
+**Memory aging rules** (handled automatically by the server):
+- `progress`: only the latest survives — older ones are deleted
+- `session-summary`: capped at 3 per project; oldest are condensed into a `learned-pattern` then deleted
+- Structural types (`architecture`, `tech-context`, etc.): evolved understanding updates the existing memory rather than duplicating it
+
+## Your role
+
+- **Read and use the `[MEMORY]` block** — it is your project continuity. Treat it as ground truth for the current project state.
+- **Never ask the user** to "save", "load", or manage memory — it is fully invisible and automatic.
+- **Never announce** that you are saving memory or that memory was loaded.
+- **When the user explicitly asks you to remember something** (e.g. "remember this", "save this for later"), use the `memory` tool with `mode: "add"` immediately. Do not skip this.
+
+## Memory tool
+
+You have access to a `memory` tool. Use it when:
+- The user explicitly asks you to remember something
+- You discover something genuinely important mid-session that won't be captured by auto-save (e.g. a key architectural decision, a tricky bug fix, a strong user preference)
+- You need context not in the `[MEMORY]` block — search proactively when you detect a task switch, encounter unfamiliar references, or need historical context
+
+**Scopes:**
+- `scope: "project"` — for project-specific knowledge (default)
+- `scope: "user"` — for cross-project preferences (e.g. "prefers concise responses", "always uses bun over npm")
+
+**Types to use:**
+| Type | When to use |
+|------|------------|
+| `project-brief` | What the project is, its purpose |
+| `architecture` | System design, component relationships |
+| `tech-context` | Stack, tools, languages, patterns |
+| `product-context` | Features, goals, product decisions |
+| `progress` | Current state, what's done, what's blocked |
+| `project-config` | Config preferences, run commands, env setup |
+| `error-solution` | Bug fixes, workarounds discovered |
+| `preference` | User coding preferences |
+| `learned-pattern` | Patterns observed across the project |
+| `session-summary` | Auto-generated — do not use manually |
+| `conversation` | Raw conversation context — rarely needed manually |
+
+**Example explicit save:**
+```
+memory({ mode: "add", content: "User prefers bun over npm for all installs", scope: "user", type: "preference" })
+memory({ mode: "add", content: "Auth uses JWT stored in httpOnly cookies, not localStorage", scope: "project", type: "architecture" })
+```
+
+**Search when needed:**
+```
+memory({ mode: "search", query: "how is authentication handled" })
+memory({ mode: "list", scope: "project", limit: 10 })
+memory({ mode: "profile" })
+memory({ mode: "forget", memoryId: "abc-123" })
+```
+````
+
+</details>
+
+> **Already have an `AGENTS.md`?** This file is global — OpenCode injects it into every session. If you already have one with other instructions (security rules, coding preferences, etc.), append the Memory System section to it rather than replacing it.
+
+---
+
+### Step 6 — Start a session
 
 Open any project in OpenCode. On your first message, you'll see a `[MEMORY]` block injected into context — this confirms the plugin is running. Memories will auto-save after every assistant turn from here on.
 
@@ -243,7 +352,7 @@ The agent sees this in its system prompt:
 ## Tech Context
 - Plugin lives at plugin/ subdirectory; opencode.json must point there not repo root
 - Docker Compose uses env_file to load .env — do not export keys in shell
-- Backend uses voyage-code-3 embeddings; extraction via grok-4-1-fast-non-reasoning
+- Backend uses voyage-code-3 embeddings; extraction via claude-haiku-4-5 (default)
 
 ## Architecture
 - Backend refactored from monolithic main.py into app/ package with focused modules
@@ -251,7 +360,7 @@ The agent sees this in its system prompt:
 
 ## Progress & Status
 - Memory server running at localhost:8020, dashboard at localhost:3030
-- Benchmark at 94.5% (189/200); cross-synthesis at 80% is primary remaining gap
+- Benchmark at 93.5% avg (3 runs, 92.0–95.0%); cross-synthesis at ~71% is primary remaining gap
 
 ## Last Session
 - Improved extraction prompt to preserve causal chains for error-solution memories
@@ -262,7 +371,7 @@ The agent sees this in its system prompt:
 - Prefers concise responses; no emojis unless explicitly requested
 
 ## Relevant to Current Task
-- [94%, 2026-02-21] Backend extraction model is grok-4-1-fast-non-reasoning — fast, structured JSON, fractions of a cent per session
+- [94%, 2026-02-23] Default extraction model is claude-haiku-4-5 — 93.5% avg benchmark, most consistent, ~$0.11/session
 - [88%, 2026-02-21] Contradiction detection marks superseded memories with superseded_by field; excluded from retrieval
 ```
 
@@ -272,7 +381,7 @@ Every time the assistant completes a turn, the plugin automatically:
 
 1. Snapshots the recent conversation (last 8 real exchanges)
 2. Sends them to `POST /memories`
-3. Grok extracts a JSON array of typed, memorable facts
+3. The configured LLM extracts a JSON array of typed, memorable facts
 4. Each fact is embedded with `voyage-code-3` and stored in LanceDB after a cosine dedup check
 5. The raw source conversation text is stored alongside each memory as a `chunk` (enables hybrid search)
 6. A contradiction search (cosine distance ≤ 0.5) finds semantically related existing memories; an LLM call identifies any that the new memory supersedes — those are marked `superseded_by` and excluded from future retrieval
@@ -309,13 +418,23 @@ When the context window approaches capacity, OpenCode summarises the conversatio
 
 ---
 
-## Why xAI + Voyage AI?
+## Extraction Providers
 
-### xAI `grok-4-1-fast-non-reasoning` — memory extraction
+Memory extraction is a well-defined, deterministic task: read a conversation, output a JSON array of typed facts. It doesn't need deep reasoning — it needs to be reliable, structured, and consistent. The backend supports three providers, selectable via a single env var:
 
-Memory extraction is a well-defined, deterministic task: read a conversation, output a JSON array. It doesn't need deep reasoning — it needs to be fast, cheap, and reliably structured.
+| Provider | Model | Speed | Cost (in/out per MTok) | Benchmark | Notes |
+|---|---|---|---|---|---|
+| **Anthropic** (default) | `claude-haiku-4-5` | ~14s/session | $1.00 / $5.00 | **93.5% avg** (92.0–95.0%, 3pp variance) | Most consistent — recommended |
+| **xAI** | `grok-4-1-fast-non-reasoning` | ~5s/session | $0.20 / $0.50 | ~86.5% avg (78.5–94.5%, 16pp variance) | Fastest and cheapest; high run-to-run variance |
+| **Google** | `gemini-3-flash-preview` | ~21s/session | $0.50 / $3.00 | — | Native JSON mode; high TTFT latency |
 
-`grok-4-1-fast-non-reasoning` is precisely that. It returns structured JSON immediately without burning tokens on internal chain-of-thought. Cost per session: **fractions of a cent** ($0.20/M input · $0.50/M output).
+```bash
+# Switch provider — edit .env, then restart
+EXTRACTION_PROVIDER=xai   # or "anthropic" (default) or "google"
+docker compose up -d
+```
+
+**Why Haiku is the default:** Across 3 benchmark runs (200 questions each), Haiku averaged 93.5% accuracy with only 3pp variance (92.0–95.0%), while Grok averaged ~86.5% with 16pp variance (78.5–94.5%). The cost difference is negligible in practice — a 20-turn session costs ~$0.11 with Haiku vs ~$0.01 with Grok, both dwarfed by the main model cost (Claude Opus/Sonnet at $15–$75/MTok). Extraction runs in the background after each assistant turn, so the ~14s latency is invisible to users — retrieval uses Voyage AI embeddings, not the extraction provider. Consistency wins over speed for a memory system where every extracted fact persists across sessions.
 
 > **Why not a reasoning model?** During testing, a frontier reasoning model consumed all `max_completion_tokens` on internal chain-of-thought and returned empty output with `finish_reason: "length"` every single time. Reasoning models are the wrong tool for deterministic structured extraction.
 
@@ -379,7 +498,7 @@ opencode-memory/
 │       ├── registry.py    NameRegistry (hash → display name)
 │       ├── db.py          LanceDB table state
 │       ├── embedder.py    Voyage AI wrapper
-│       ├── extractor.py   xAI client + extraction logic
+│       ├── extractor.py   multi-provider LLM dispatch + extraction logic
 │       ├── store.py       dedup, aging rules, CRUD helpers
 │       └── routes/        memories · projects · system
 ├── frontend/     Next.js 15 · Tailwind — web dashboard
@@ -401,7 +520,7 @@ flowchart TD
     subgraph SERVER["⚙️ Memory Server — Python · FastAPI · Docker"]
         subgraph WRITE["POST /memories"]
             direction LR
-            W1["xAI Grok<br/>extract typed facts + chunks"] --> W2["Voyage voyage-code-3<br/>embed · 1024 dims"] --> W3["LanceDB<br/>cosine dedup → upsert"] --> W4["xAI Grok<br/>contradiction detect → supersede stale"]
+            W1["LLM extraction<br/>(xAI · Anthropic · Google)<br/>extract typed facts + chunks"] --> W2["Voyage voyage-code-3<br/>embed · 1024 dims"] --> W3["LanceDB<br/>cosine dedup → upsert"] --> W4["LLM contradiction<br/>detect → supersede stale"]
         end
         subgraph FIND["POST /memories/search"]
             direction LR
@@ -539,7 +658,7 @@ docker compose down -v
 All data stays on your machine. The only outbound API calls are:
 
 - **Voyage AI** — text is sent to generate embeddings. Voyage does not store your data.
-- **xAI** — conversation text is sent to Grok for memory extraction.
+- **Your extraction provider** (xAI, Anthropic, or Google) — conversation text is sent for memory extraction. Only one provider is called per request, determined by `EXTRACTION_PROVIDER`.
 
 To exclude sensitive content from extraction, wrap it in `<private>...</private>` — it will be stripped before any text leaves your machine.
 
@@ -553,6 +672,6 @@ To exclude sensitive content from extraction, wrap it in `<private>...</private>
 
 <div align="center">
 
-Built with [OpenCode](https://opencode.ai) · [LanceDB](https://lancedb.com) · [Voyage AI](https://www.voyageai.com) · [xAI](https://x.ai) · [FastAPI](https://fastapi.tiangolo.com) · [Bun](https://bun.sh)
+Built with [OpenCode](https://opencode.ai) · [LanceDB](https://lancedb.com) · [Voyage AI](https://www.voyageai.com) · [xAI](https://x.ai) · [Anthropic](https://anthropic.com) · [Google AI](https://ai.google.dev) · [FastAPI](https://fastapi.tiangolo.com) · [Bun](https://bun.sh)
 
 </div>

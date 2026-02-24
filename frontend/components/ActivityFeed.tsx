@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 
+type ApiProvider = "xai" | "google" | "anthropic" | "voyage";
+
 interface ActivityEntry {
   ts: string;
-  api: "xai" | "voyage";
+  api: ApiProvider;
   model: string;
   operation: string;
   prompt_tokens: number | null;
@@ -13,6 +15,13 @@ interface ActivityEntry {
   tokens: number | null;
   cost_usd: number;
 }
+
+const API_META: Record<ApiProvider, { label: string; color: string; costColor: string }> = {
+  xai:       { label: "xAI",       color: "text-amber-400",  costColor: "text-amber-400/80" },
+  anthropic: { label: "Anthropic", color: "text-violet-400", costColor: "text-violet-400/80" },
+  google:    { label: "Google",    color: "text-green-400",  costColor: "text-green-400/80" },
+  voyage:    { label: "Voyage",    color: "text-sky-400",    costColor: "text-sky-400/80" },
+};
 
 function fmtUSD(n: number): string {
   if (n === 0) return "$0.00";
@@ -121,27 +130,25 @@ export function ActivityFeed() {
                 <span className="text-zinc-500 truncate">{timeAgoShort(e.ts)}</span>
 
                 {/* API badge */}
-                <span className={`font-semibold ${
-                  e.api === "xai" ? "text-amber-400" : "text-sky-400"
-                }`}>
-                  {e.api === "xai" ? "xAI" : "Voyage"}
+                <span className={`font-semibold ${API_META[e.api]?.color ?? "text-zinc-400"}`}>
+                  {API_META[e.api]?.label ?? e.api}
                 </span>
 
                 {/* Operation */}
                 <span className="text-zinc-400 truncate">{e.operation}</span>
 
-                {/* Tokens detail */}
+                {/* Tokens detail — LLM providers show in/out, Voyage shows total */}
                 <span className="text-zinc-500 truncate">
-                  {e.api === "xai"
-                    ? `${fmtTokens(e.prompt_tokens)} in · ${fmtTokens(e.cached_tokens)} cached · ${fmtTokens(e.completion_tokens)} out`
-                    : `${fmtTokens(e.tokens)} tokens`
+                  {e.api === "voyage"
+                    ? `${fmtTokens(e.tokens)} tokens`
+                    : e.api === "xai"
+                      ? `${fmtTokens(e.prompt_tokens)} in · ${fmtTokens(e.cached_tokens)} cached · ${fmtTokens(e.completion_tokens)} out`
+                      : `${fmtTokens(e.prompt_tokens)} in · ${fmtTokens(e.completion_tokens)} out`
                   }
                 </span>
 
                 {/* Cost */}
-                <span className={`text-right ${
-                  e.api === "xai" ? "text-amber-400/80" : "text-sky-400/80"
-                }`}>
+                <span className={`text-right ${API_META[e.api]?.costColor ?? "text-zinc-400/80"}`}>
                   {fmtUSD(e.cost_usd)}
                 </span>
 
