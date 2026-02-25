@@ -24,8 +24,23 @@ import {
 import { getTable } from "./db.js";
 import { embed } from "./embedder.js";
 import { condenseToLearnedPattern, detectContradictions, extractMemories } from "./extractor.js";
-import { withRetry, DB_RETRY } from "./retry.js";
+import { withRetry, DB_RETRY, DB_SEARCH_RETRY } from "./retry.js";
 import type { ExtractionMode, IngestResult, Message, SearchResult } from "./types.js";
+
+// ── Safe JSON parsing ───────────────────────────────────────────────────────────
+
+/**
+ * Parse JSON with a fallback default. All metadata_json parsing MUST use this
+ * helper to prevent silent failures from malformed data in the extras loop,
+ * search candidates, or list results.
+ */
+function safeParseJson(raw: unknown, fallback: Record<string, unknown> = {}): Record<string, unknown> {
+	try {
+		return JSON.parse((raw as string) || "{}");
+	} catch {
+		return fallback;
+	}
+}
 
 // ── Deduplication ───────────────────────────────────────────────────────────────
 
@@ -160,21 +175,20 @@ async function getMemoriesByTypes(
 		if (count === 0) return [];
 
 		const safeUserId = validateId(userId, "user_id");
-		// Query all non-superseded for this user
+		// WORKAROUND: LanceDB JS SDK requires a vector for every query — there is no
+		// pure-filter query mode. We pass a zero-vector (1024 floats) to get filtering
+		// without meaningful similarity ranking. Results are then filtered/sorted in JS.
+		// This is a known SDK limitation; upstream feature request would be welcome.
 		const results = await table
-			.search(new Array(1024).fill(0)) // dummy vector — we want filtering, not similarity
+			.search(new Array(1024).fill(0))
 			.where(`user_id = '${safeUserId}' AND superseded_by = ''`)
 			.limit(10_000) // generous cap — single-user system
 			.toArray();
 
 		const typeSet = new Set(memoryTypes);
 		let typed = results.filter(r => {
-			try {
-				const meta = JSON.parse((r.metadata_json as string) || "{}");
-				return typeSet.has(meta.type);
-			} catch {
-				return false;
-			}
+			const meta = safeParseJson(r.metadata_json);
+			return typeSet.has(meta.type as string);
 		});
 
 		typed.sort((a, b) =>
@@ -408,17 +422,21 @@ export async function search(
 	//
 	// LanceDB JS SDK prefilters by default (.where() filters BEFORE ANN search),
 	// matching Python's prefilter=True behavior. Use .postfilter() to opt out.
-	const rows = await table
-		.search(queryVector)
-		.distanceType("cosine")
-		.where(`user_id = '${safeUserId}' AND superseded_by = ''`)
-		.limit(limit)
-		.toArray();
+	const rows = await withRetry(
+		() => table
+			.search(queryVector)
+			.distanceType("cosine")
+			.where(`user_id = '${safeUserId}' AND superseded_by = ''`)
+			.limit(limit)
+			.toArray(),
+		"LanceDB search",
+		DB_SEARCH_RETRY,
+	);
 
 	// Build candidates with semantic scores + parsed dates
 	const candidates = rows.map(r => {
 		const semantic = Math.max(0, 1.0 - (r._distance as number ?? 1.0));
-		const meta = JSON.parse((r.metadata_json as string) || "{}");
+		const meta = safeParseJson(r.metadata_json);
 		const d = extractDate(r);
 		return {
 			id: r.id as string,
@@ -476,7 +494,7 @@ export async function search(
 		const extras: SearchResult[] = [];
 		for (const tr of typeRows) {
 			if (seenIds.has(tr.id as string)) continue;
-			const meta = JSON.parse((tr.metadata_json as string) || "{}");
+			const meta = safeParseJson(tr.metadata_json);
 			const d = extractDate(tr);
 			extras.push({
 				id: tr.id as string,
@@ -531,7 +549,7 @@ export async function list(
 
 	const limit = options.limit ?? 20;
 
-	// Query all for user — use dummy vector
+	// WORKAROUND: zero-vector for non-semantic query (see getMemoriesByTypes comment)
 	const whereClause = options.includeSuperseded
 		? `user_id = '${safeUserId}'`
 		: `user_id = '${safeUserId}' AND superseded_by = ''`;
@@ -551,7 +569,7 @@ export async function list(
 		id: r.id as string,
 		memory: r.memory as string,
 		user_id: r.user_id as string,
-		metadata: JSON.parse((r.metadata_json as string) || "{}"),
+		metadata: safeParseJson(r.metadata_json),
 		created_at: (r.created_at as string) || null,
 		updated_at: (r.updated_at as string) || null,
 	}));
@@ -612,15 +630,11 @@ export async function getProfile(
  * Parse session date from metadata_json['date'], falling back to created_at[:10].
  */
 function extractDate(row: Record<string, unknown>): Date | null {
-	try {
-		const meta = JSON.parse((row.metadata_json as string) || "{}");
-		const raw = meta.date || ((row.created_at as string) || "").slice(0, 10);
-		if (raw) {
-			const parsed = new Date(raw);
-			if (!isNaN(parsed.getTime())) return parsed;
-		}
-	} catch {
-		// Ignore parse errors
+	const meta = safeParseJson(row.metadata_json);
+	const raw = (meta.date as string) || ((row.created_at as string) || "").slice(0, 10);
+	if (raw) {
+		const parsed = new Date(raw);
+		if (!isNaN(parsed.getTime())) return parsed;
 	}
 	return null;
 }

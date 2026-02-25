@@ -359,8 +359,22 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
 	const tags = getTags(directory);
 	const displayNames = getDisplayNames(directory);
 	const sessionCaches = new Map<string, SessionMemoryCache>();
+	const MAX_SESSION_CACHES = 100; // Prevent unbounded growth; LRU eviction below
 	const configured = isConfigured();
 	log("Plugin init", { directory, tags, displayNames, configured });
+
+	// LRU eviction for sessionCaches — evicts oldest entry when limit exceeded
+	function setSessionCache(sessionID: string, cache: SessionMemoryCache): void {
+		sessionCaches.set(sessionID, cache);
+		if (sessionCaches.size > MAX_SESSION_CACHES) {
+			// Map iterates in insertion order — first key is the oldest
+			const oldestKey = sessionCaches.keys().next().value;
+			if (oldestKey && oldestKey !== sessionID) {
+				sessionCaches.delete(oldestKey);
+				log("sessionCaches: evicted oldest entry", { evicted: oldestKey, size: sessionCaches.size });
+			}
+		}
+	}
 
 	if (!configured) {
 		log("Plugin disabled — VOYAGE_API_KEY not set");
@@ -568,7 +582,7 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
 					};
 
 					// ── Populate session cache ──────────────────────────────────
-					sessionCaches.set(input.sessionID, {
+					setSessionCache(input.sessionID, {
 						structuredSections: byType,
 						profile,
 						userSemanticResults: userResults,

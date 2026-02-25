@@ -26,6 +26,15 @@ export const DB_RETRY: RetryConfig = {
 	timeoutMs: 5_000,
 };
 
+/** Default retry config for LanceDB search operations (longer timeout than writes). */
+export const DB_SEARCH_RETRY: RetryConfig = {
+	maxRetries: 3,
+	baseDelayMs: 100,
+	maxDelayMs: 5_000,
+	jitter: 0.25,
+	timeoutMs: 30_000,
+};
+
 /** Default retry config for embedding API calls. */
 export const EMBED_RETRY: RetryConfig = {
 	maxRetries: 3,

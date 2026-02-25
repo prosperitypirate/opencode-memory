@@ -9,8 +9,21 @@
 const SAFE_ID_RE = /^[a-zA-Z0-9_:.\-]+$/;
 
 /**
- * Validate that `value` is a safe identifier for use in LanceDB queries.
- * Throws if the value contains characters that could break or inject into a where-clause.
+ * Validate and sanitize `value` for safe use in LanceDB `where()` clauses.
+ *
+ * ARCHITECTURE NOTE: LanceDB's JS SDK does not support parameterized queries.
+ * All `where()` clauses use string interpolation (e.g., `where(\`user_id = '${id}'\`)`).
+ * This function provides two layers of defense:
+ *
+ * 1. **Allowlist regex**: Only permits alphanumeric, hyphens, underscores, colons, dots.
+ *    This blocks all SQL/filter injection characters (quotes, semicolons, parens, etc.)
+ * 2. **Single-quote escaping**: Defense-in-depth — escapes any `'` to `''` (SQL-standard
+ *    escape) in case the regex is ever relaxed or bypassed.
+ *
+ * All LanceDB `where()` calls in store.ts MUST use `validateId()` on every interpolated
+ * value. See store.ts lines 51, 91, 110, 166, 229, 273, 327, 414, 536, 581.
+ *
+ * @throws Error if value is empty or contains disallowed characters.
  */
 export function validateId(value: string, fieldName = "id"): string {
 	if (!value || !SAFE_ID_RE.test(value)) {
@@ -19,7 +32,9 @@ export function validateId(value: string, fieldName = "id"): string {
 			`alphanumeric characters, hyphens, underscores, colons, or dots`
 		);
 	}
-	return value;
+	// Defense-in-depth: escape single quotes even though regex blocks them.
+	// Prevents injection if regex is ever relaxed in a future change.
+	return value.replace(/'/g, "''");
 }
 
 // ── API credentials ─────────────────────────────────────────────────────────────

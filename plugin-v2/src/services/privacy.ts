@@ -3,14 +3,46 @@
  *
  * Applied in ALL 4 ingestion paths (memory tool add, auto-save, compaction, init).
  * This fixes the privacy stripping gap from the original plugin (see design doc §12).
+ *
+ * Uses iterative indexOf-based parsing instead of regex to avoid polynomial
+ * backtracking on adversarial input (GitHub code scanning ReDoS alert).
  */
 
+const OPEN_TAG = "<private>";
+const CLOSE_TAG = "</private>";
+
 export function containsPrivateTag(content: string): boolean {
-	return /<private>[\s\S]*?<\/private>/i.test(content);
+	const lower = content.toLowerCase();
+	const openIdx = lower.indexOf(OPEN_TAG);
+	if (openIdx === -1) return false;
+	return lower.indexOf(CLOSE_TAG, openIdx + OPEN_TAG.length) !== -1;
 }
 
 export function stripPrivateContent(content: string): string {
-	return content.replace(/<private>[\s\S]*?<\/private>/gi, "[REDACTED]");
+	// Iterative approach: find each <private>...</private> pair and replace with [REDACTED].
+	// Case-insensitive matching via lowercased shadow string; edits applied to original.
+	let result = "";
+	let cursor = 0;
+	const lower = content.toLowerCase();
+
+	while (cursor < content.length) {
+		const openIdx = lower.indexOf(OPEN_TAG, cursor);
+		if (openIdx === -1) {
+			result += content.slice(cursor);
+			break;
+		}
+		const closeIdx = lower.indexOf(CLOSE_TAG, openIdx + OPEN_TAG.length);
+		if (closeIdx === -1) {
+			// Unclosed tag — keep remaining content as-is
+			result += content.slice(cursor);
+			break;
+		}
+		// Append content before the tag, then the redaction marker
+		result += content.slice(cursor, openIdx) + "[REDACTED]";
+		cursor = closeIdx + CLOSE_TAG.length;
+	}
+
+	return result;
 }
 
 export function isFullyPrivate(content: string): boolean {

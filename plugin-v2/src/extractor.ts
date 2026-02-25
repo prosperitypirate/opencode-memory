@@ -238,7 +238,14 @@ const PROVIDER_FN: Record<ExtractionProvider, (s: string, u: string) => Promise<
 /**
  * Route to the configured extraction provider with automatic fallback.
  * Tries the primary provider first, then falls back through remaining providers.
- * Returns empty JSON array on total failure (silent degradation).
+ *
+ * @returns Raw LLM response text (string). All callers MUST pass the result through
+ *   `parseJsonArray()` to get typed facts. On total failure, returns the string `"[]"`
+ *   which `parseJsonArray()` safely parses to an empty array — zero memories extracted
+ *   for this turn, but the system continues without error.
+ *
+ * Silent degradation rationale: extraction failure should never block the user's
+ * coding session. The next turn will retry automatically.
  */
 export async function callLlm(system: string, user: string): Promise<string> {
 	const primary = EXTRACTION_PROVIDER;
@@ -259,7 +266,9 @@ export async function callLlm(system: string, user: string): Promise<string> {
 		}
 	}
 
-	// All providers exhausted — silent degradation
+	// All providers exhausted — return valid JSON array string so parseJsonArray()
+	// returns [] rather than throwing. This is intentionally a string, not an array,
+	// because callLlm's contract returns raw LLM text for parseJsonArray() to process.
 	console.error("All extraction providers failed — skipping extraction for this turn");
 	return "[]";
 }
