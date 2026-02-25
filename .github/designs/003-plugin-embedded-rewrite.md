@@ -370,6 +370,24 @@ await table.createIndex("user_id", { config: lancedb.Index.btree() });
 await table.createIndex("type", { config: lancedb.Index.bitmap() });
 ```
 
+**Table Optimization (VACUUM equivalent):**
+
+```typescript
+// Periodic maintenance — compaction + pruning old versions + index optimization
+await table.optimize({
+	cleanupOlderThan: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days
+});
+
+// Table versioning — useful for debugging and rollback
+const version = await table.version();
+const versions = await table.listVersions();
+await table.checkout(version - 1);  // Read from previous version
+await table.checkoutLatest();        // Return to latest
+await table.restore();               // Restore checked-out version as latest
+```
+
+Schedule `table.optimize()` on `session.idle` events (same trigger as auto-save) with a longer cooldown (e.g., every 24 hours). This prevents unbounded growth of Lance fragment files.
+
 **Implementation plan**: Start without indexes (Phase 2). Add FTS index in Phase 5 if benchmark shows keyword queries underperforming. Add vector indexes only if database exceeds ~50K rows.
 
 ### Embedder (fetch-based)
@@ -542,9 +560,9 @@ client.tui.showToast("Dashboard running at http://localhost:3030");
 
 ```typescript
 // Replace console.log / custom logger with SDK logging
-client.app.log("debug", "Extracted 5 memories from conversation");
-client.app.log("warn", "Voyage API rate limit approaching");
-client.app.log("error", `LanceDB write failed: ${error.message}`);
+client.app.log({ body: { service: "opencode-memory", level: "debug", message: "Extracted 5 memories from conversation" } });
+client.app.log({ body: { service: "opencode-memory", level: "warn", message: "Voyage API rate limit approaching" } });
+client.app.log({ body: { service: "opencode-memory", level: "error", message: `LanceDB write failed: ${error.message}` } });
 ```
 
 **Compaction hook** (already implemented, but document the API):
@@ -565,8 +583,22 @@ client.app.log("error", `LanceDB write failed: ${error.message}`);
 | `session.created` | Auto-initialize project memories |
 | `session.idle` | Trigger background dedup/aging |
 | `session.error` | Log errors to activity ledger |
+| `session.diff` | Track session state changes |
 | `file.edited` | Track which files the agent modifies |
 | `tool.execute.before/after` | Measure tool execution latency |
+| `permission.asked/replied` | Audit permission decisions |
+
+**Environment variable injection** via `shell.env` hook:
+
+```typescript
+// Inject API keys into shell environment for CLI tools
+"shell.env": async (input, output) => {
+	output.env.VOYAGE_API_KEY = config.VOYAGE_API_KEY;
+	output.env.OPENCODE_MEMORY_DIR = config.DATA_DIR;
+}
+```
+
+This hook injects env vars into all shell execution (AI tools and user terminals). Useful for making API keys available to CLI subcommands without explicit passing.
 
 ### Dashboard — Hybrid Model (Agent Inline + On-Demand Hono)
 
@@ -632,6 +664,239 @@ export function stopDashboard(): void {
 
 ---
 
+## KEY PATTERNS FOR PORTING
+
+Critical implementation details discovered during deep codebase analysis. These are patterns, workarounds, and gotchas that must be preserved or fixed in the rewrite.
+
+### CRITICAL — Must Port Exactly
+
+**1. assistantTextBuffer Streaming Pattern**
+
+The `messages.transform` hook fires BEFORE the LLM call, so `cachedMessages` never contains the latest assistant response. The plugin works around this with a streaming buffer:
+
+```typescript
+// auto-save.ts — accumulates streaming text
+// Map<"sessionID:messageID", string>
+const assistantTextBuffer = new Map<string, string>();  // Hard cap: 200 entries, FIFO eviction
+
+// message.part.updated events → buffer text chunks
+// message.updated (finish !== "tool-calls") → inject into cachedMessages
+function injectFinalAssistantMessage(sessionId: string, messageId: string): void {
+	const key = `${sessionId}:${messageId}`;
+	const text = assistantTextBuffer.get(key);
+	if (!text) return;
+	// Inject synthetic assistant message into cachedMessages
+	assistantTextBuffer.delete(key);
+}
+```
+
+**Why this matters**: Without this pattern, auto-save extraction would never see the assistant's most recent response. This is not a bug — it's a fundamental timing constraint in the hook system.
+
+**2. SDK Fetch Fallback Pattern**
+
+```typescript
+// auto-save.ts — fetchMessages() tries SDK first, falls back to cache
+async function fetchMessages(sessionId: string): Promise<Message[]> {
+	try {
+		return await client.session.messages(sessionId);  // Fails in TUI mode ("Unauthorized")
+	} catch {
+		return cachedMessages.get(sessionId) ?? [];  // Primary mechanism
+	}
+}
+```
+
+The SDK message API is unreliable in TUI mode. The transform cache + streaming buffer is the **actual** message source for extraction. The rewrite must preserve this dual-path approach.
+
+**3. Compaction Filesystem I/O (NOT "Minimal Changes")**
+
+`compaction.ts` (561 lines) directly reads and writes OpenCode's internal message storage:
+
+```typescript
+// compaction.ts — injectHookMessage()
+// Writes synthetic JSON files to:
+//   ~/.opencode/messages/{sessionID}/{messageID}.json
+//   ~/.opencode/parts/{messageID}/{partID}.json
+
+// findNearestMessageWithFields()
+// Reads message JSONs to extract agent, model, path metadata
+// Scans ~/.opencode/messages/{sessionID}/ directory
+```
+
+**Current design doc says "copies with minimal changes" — this is wrong.** Compaction is deeply coupled to OpenCode's internal storage format. The rewrite must:
+- Preserve the exact JSON format for `injectHookMessage()` (OpenCode reads these files)
+- Handle the directory scanning in `findNearestMessageWithFields()`
+- Test that injected messages survive compaction and appear in subsequent turns
+
+**4. Compaction State Machine (3-Phase)**
+
+```
+compactionInProgress: Set<string>    — guards concurrent compaction per session
+lastCompactionTime: Map<string, number> — 30s cooldown per session
+summarizedSessions: Set<string>      — tracks sessions for summary extraction
+```
+
+**State leak bug to fix**: `summarizedSessions.add(sessionId)` is called BEFORE `summarize()`. If `summarize()` throws, cleanup removes from `compactionInProgress` but NOT from `summarizedSessions`, causing the session to be permanently skipped for future summary extraction. Fix: move `add()` after successful `summarize()`.
+
+**5. Two Parallel Auto-Save Tracks**
+
+`onSessionIdle()` runs both tracks concurrently:
+
+```typescript
+await Promise.all([
+	extractAndSave(),        // Last 8 messages → atomic typed facts (EXTRACTION prompts)
+	generateSessionSummary() // Last 20 messages → single session-summary (SUMMARY prompts)
+]);
+```
+
+| Track | Messages | Min Required | Prompt Set | Output | Cooldown |
+|-------|----------|-------------|------------|--------|----------|
+| Extraction | Last 8 | 2 messages, 100 chars | `EXTRACTION_SYSTEM/USER` | Multiple typed facts | 15s per session |
+| Summary | Last 20 | 4 messages | `SUMMARY_SYSTEM/USER` | Single session-summary | Every 5 turns |
+
+Both tracks share the same `memoryClient.addMemories()` endpoint (→ `store.ingest()` in rewrite) but use different prompt templates and thresholds.
+
+**6. Three Distinct Extraction Modes**
+
+The extractor is called in three different contexts with different prompts:
+
+| Mode | Prompt Pair | Input | Output | Called From |
+|------|-------------|-------|--------|-------------|
+| Normal | `EXTRACTION_SYSTEM/USER` | Conversation (last 8 msgs) | Multiple typed facts | `extractAndSave()` |
+| Summary | `SUMMARY_SYSTEM/USER` | Conversation (last 20 msgs) | Single session-summary | `generateSessionSummary()` |
+| Init | `INIT_EXTRACTION_SYSTEM/USER` | Project files (README, etc.) | Typed facts (always includes project-brief) | `addMemoryFromProjectFiles()` |
+
+The rewrite extractor must support all three modes via a `mode` parameter.
+
+**7. Enumeration Query Detection**
+
+```typescript
+// client.ts — ENUMERATION_REGEX
+const ENUMERATION_REGEX = /\b(list|show|display|every|all)\b.*\b(env|var|pref|config|pattern|error|solution)\b/i;
+const WIDE_SYNTHESIS_REGEX = /\b(across\s+both|all\s+projects?)\b/i;
+
+// When triggered: type-filtered retrieval supplements semantic search
+// Types queried: tech-context, preference, learned-pattern, error-solution, project-config
+// Wide synthesis adds: architecture
+// Type-filtered extras get fixed score of 0.25
+// Total response: up to 40 items (20 semantic + 20 type-filtered extras)
+```
+
+This pattern boosts recall for "list all preferences" style queries where pure vector similarity would miss items with different phrasings.
+
+### MEDIUM — Port with Adjustments
+
+**8. Module-Level State with Hard Caps**
+
+All module-level Maps must preserve hard caps to prevent memory leaks:
+
+| State | Type | Max Entries | Eviction |
+|-------|------|-------------|----------|
+| `assistantTextBuffer` | `Map<string, string>` | 200 | FIFO |
+| `lastExtracted` | `Map<string, number>` | 500 | FIFO |
+| `turnCountPerSession` | `Map<string, number>` | 500 | FIFO |
+| `sessionCaches` | `Map<string, Message[]>` | Unbounded | Cleaned on `session.deleted` |
+| `modelLimits` | `Map<string, number>` | Populated once at init | Never evicted |
+
+**9. Dedup vs Fresh Insert Side Effects**
+
+| Path | Dedup Check | Contradiction Detection | Aging Rules |
+|------|-------------|------------------------|-------------|
+| Dedup match (UPDATE) | Yes — updates `memory`, `updated_at`, `hash`, `metadata_json`, `chunk` | NO | NO |
+| New insert (ADD) | Yes — no match found | YES | YES |
+
+This is intentional: dedup updates are lightweight refreshes of existing knowledge. Only genuinely new memories trigger the expensive contradiction + aging pipeline.
+
+**10. Scope Detection Heuristic**
+
+```typescript
+// Backend checks for "_user_" substring in user_id
+// Tags generate: "opencode_user_{hash}" and "opencode_project_{hash}"
+const isUserScope = userId.includes("_user_");
+```
+
+The rewrite must preserve this naming convention — it's how user-scoped vs project-scoped memories are distinguished.
+
+**11. Name Registry (names.json)**
+
+Separate JSON file at `{DATA_DIR}/names.json` — NOT stored in LanceDB:
+
+```python
+# backend/app/registry.py — 64 lines
+# Thread-safe locking (Python threading.Lock)
+# Maps hashes to human-readable names
+# e.g., "opencode_project_a1b2c3" → "my-project"
+```
+
+The rewrite needs a `names.ts` module (~40 lines) using `Bun.file()` / `Bun.write()` with in-memory cache.
+
+### BUG TO FIX IN REWRITE
+
+**12. Privacy Stripping Gap**
+
+`<private>` tags are currently only stripped in the memory tool `add` handler (`index.ts` line 662-664). Three other paths skip privacy stripping entirely:
+
+| Path | Privacy Strip? | Risk |
+|------|---------------|------|
+| Memory tool `add` | YES | None |
+| Auto-save (`addMemoryFromMessages`) | **NO** | Private content stored from conversations |
+| Compaction (`ingestConversation`) | **NO** | Private content stored from compaction summaries |
+| Init (`addMemoryFromProjectFiles`) | **NO** | Private content stored from project files |
+
+**Fix**: Apply `stripPrivateContent()` in all four paths before sending to extraction or storage.
+
+**13. Logger Uses Sync I/O**
+
+```typescript
+// logger.ts — 15 lines
+// Uses appendFileSync() — blocks the event loop
+// Replace with: await Bun.write(path, data, { append: true })
+```
+
+### REFERENCE — Hardcoded Values Inventory
+
+All magic numbers that should be centralized in `config.ts`:
+
+**Plugin-side (13 values):**
+
+| Constant | Value | Location | Purpose |
+|----------|-------|----------|---------|
+| `TIMEOUT_MS` | 30000 | client.ts | HTTP request timeout |
+| `MAX_CONVERSATION_CHARS` | 100000 | auto-save.ts | Max conversation size for extraction |
+| `DEFAULT_THRESHOLD` | 0.80 | index.ts | Context size threshold for compaction trigger |
+| `MIN_TOKENS` | 50000 | compaction.ts | Minimum token count before compaction considered |
+| `COMPACTION_COOLDOWN` | 30000 | compaction.ts | 30s between compactions per session |
+| `DEFAULT_CONTEXT_LIMIT` | 200000 | compaction.ts | Default max context tokens |
+| `COOLDOWN_MS` | 15000 | auto-save.ts | 15s between extractions per session |
+| `MIN_EXCHANGE_CHARS` | 100 | auto-save.ts | Minimum conversation length for extraction |
+| `MAX_MESSAGES` | 8 | auto-save.ts | Last N messages for extraction |
+| `INIT_TOTAL_CHAR_CAP` | 7000 | index.ts | Max chars read from project files for init |
+| `similarity` | 0.55 | client.ts | Minimum similarity threshold for search |
+| `chunk_truncation` | 400 | client.ts | Max chars per memory chunk |
+| `hash_prefix` | 16 | client.ts | Hash prefix length for content dedup |
+
+**Backend-side (14 values):**
+
+| Constant | Value | Location | Purpose |
+|----------|-------|----------|---------|
+| `DEDUP_DISTANCE` | 0.12 | store.py | Vector distance threshold for dedup |
+| `STRUCTURAL_DEDUP` | 0.25 | store.py | Structural dedup distance threshold |
+| `CONTRADICTION_CANDIDATE` | 0.5 | store.py | Distance threshold for contradiction candidates |
+| `STRUCTURAL_CONTRADICTION` | 0.75 | store.py | Structural contradiction distance threshold |
+| `CANDIDATE_LIMIT` | 25 | store.py | Max candidates for dedup/contradiction search |
+| `MAX_SESSION_SUMMARIES` | 3 | store.py | Cap on session-summary type per project |
+| `MAX_CONTENT_CHARS` | 8000 | extractor.py | Max input chars for extraction |
+| `MAX_SUMMARY_CHARS` | 4000 | extractor.py | Max input chars for summary extraction |
+| `max_tokens` | 2000 | extractor.py | Max output tokens for LLM calls |
+| `temperature` | 0 | extractor.py | LLM temperature (deterministic) |
+| `timeout` | 60s | extractor.py | LLM API call timeout |
+| `RECENCY_DECAY` | 0.1 | routes/memories.py | Recency weight decay factor |
+| `ENUM_BASE_SCORE` | 0.25 | routes/memories.py | Base score for type-filtered enum results |
+| `ACTIVITY_MAX` | 200 | telemetry.py | Activity log ring buffer size |
+
+All 27 values should be centralized in `config.ts` with sensible defaults and optional env var overrides.
+
+---
+
 ## IMPLEMENTATION PHASES
 
 ### PHASE 1: LanceDB Spike — Critical Gate
@@ -693,6 +958,40 @@ await table.update({ where: 'id = "test-2"', values: { memory: "Updated memory" 
 // Cleanup
 await db.dropTable("test");
 console.log("✓ All LanceDB operations work in Bun");
+
+// === ASYNC STRESS TEST (critical for Bun NAPI-RS compat) ===
+const db2 = await lancedb.connect("/tmp/opencode-memory-spike-async");
+const asyncTable = await db2.createTable("async_test", [{
+	id: "seed", memory: "seed", vector: new Array(1024).fill(0), user_id: "test",
+}]);
+
+// Concurrent writes — verify no corruption
+await Promise.all(
+	Array.from({ length: 10 }, (_, i) =>
+		asyncTable.add([{
+			id: `concurrent-${i}`,
+			memory: `Concurrent write ${i}`,
+			vector: new Array(1024).fill(i / 10),
+			user_id: "test",
+		}])
+	)
+);
+const count = await asyncTable.countRows();
+console.log(`Concurrent writes: ${count} rows (expected 11)`);
+
+// Search during write
+const [writeResult, searchResult] = await Promise.all([
+	asyncTable.add([{ id: "during-search", memory: "Written during search", vector: new Array(1024).fill(0.5), user_id: "test" }]),
+	asyncTable.search(new Array(1024).fill(0.5)).limit(5).toArray(),
+]);
+console.log(`Search during write: ${searchResult.length} results`);
+
+// Optimize (VACUUM equivalent)
+await asyncTable.optimize();
+console.log("✓ table.optimize() works");
+
+await db2.dropTable("async_test");
+console.log("✓ All async stress tests pass in Bun");
 ```
 
 **Success Criteria:**
@@ -701,6 +1000,8 @@ console.log("✓ All LanceDB operations work in Bun");
 - Filters with `where()` work correctly
 - No NAPI binding crashes or segfaults
 - Works on macOS ARM (dev machine)
+- **Async patterns work correctly**: concurrent writes don't corrupt data, search during write returns consistent results, async operations complete fully (Bun NAPI-RS caveat: some modules exit early before async ops finish)
+- `table.optimize()` runs without errors
 
 **If Spike Fails:**
 - Try `vectordb` (older LanceDB package) as fallback
@@ -724,6 +1025,7 @@ console.log("✓ All LanceDB operations work in Bun");
 - [ ] `plugin-v2/src/prompts.ts` — extraction prompt templates (copy from `backend/app/prompts.py`)
 - [ ] `plugin-v2/src/store.ts` — CRUD, dedup, aging, contradiction detection
 - [ ] `plugin-v2/src/telemetry.ts` — CostLedger + ActivityLog (port from `backend/app/telemetry.py`)
+- [ ] `plugin-v2/src/names.ts` — Name registry with JSON persistence (port from `backend/app/registry.py`)
 - [ ] `plugin-v2/src/types.ts` — Zod schemas for memory records and API responses
 
 **Port mapping:**
@@ -738,6 +1040,7 @@ console.log("✓ All LanceDB operations work in Bun");
 | `backend/app/store.py` (266 lines) | `store.ts` (~250 lines) | 0.95x | Sync Python → async TypeScript |
 | `backend/app/models.py` (60 lines) | `types.ts` (~80 lines) | 1.3x | PyArrow schema → Zod + TS types |
 | `backend/app/telemetry.py` (280 lines) | `telemetry.ts` (~250 lines) | 0.9x | CostLedger + ActivityLog; `Bun.write()` for JSONL append |
+| `backend/app/registry.py` (64 lines) | `names.ts` (~40 lines) | 0.6x | Name registry; JSON file with in-memory cache; `Bun.file()` / `Bun.write()` |
 
 **Validation approach:**
 ```bash
@@ -773,12 +1076,12 @@ bun test plugin-v2/src/store.test.ts
 **Deliverables:**
 - [ ] `plugin-v2/src/index.ts` — Copy from `plugin/src/index.ts`, swap all `memoryClient.*` calls
 - [ ] `plugin-v2/src/services/auto-save.ts` — Copy, swap `memoryClient.addMemories()` → `store.ingest()`
-- [ ] `plugin-v2/src/services/compaction.ts` — Copy, swap client calls
+- [ ] `plugin-v2/src/services/compaction.ts` — Copy, swap client calls. **NOTE**: This is NOT a minimal port — compaction.ts has deep filesystem coupling (see "Key Patterns for Porting" §3). Must preserve `injectHookMessage()` JSON format, `findNearestMessageWithFields()` directory scanning, and the 3-phase state machine. Fix `summarizedSessions` state leak bug (see §4).
 - [ ] `plugin-v2/src/services/context.ts` — Copy unchanged
 - [ ] `plugin-v2/src/services/tags.ts` — Copy unchanged
-- [ ] `plugin-v2/src/services/jsonc.ts` — Copy unchanged
-- [ ] `plugin-v2/src/services/privacy.ts` — Copy unchanged
-- [ ] `plugin-v2/src/services/logger.ts` — Copy unchanged
+- [ ] `plugin-v2/src/services/jsonc.ts` — **Remove** — replaced by `Bun.JSONC.parse()`
+- [ ] `plugin-v2/src/services/privacy.ts` — Copy, then **apply in all 4 ingestion paths** (memory tool add, auto-save, compaction, init — see "Key Patterns for Porting" §12)
+- [ ] `plugin-v2/src/services/logger.ts` — **Rewrite** — replace `appendFileSync()` with `await Bun.write(path, data, { append: true })` (see §13)
 - [ ] `plugin-v2/src/types/index.ts` — Copy, merge with new types
 
 **Call replacement map:**
@@ -1009,6 +1312,9 @@ bunx opencode-memory install
 | Concurrent writes from multiple OpenCode sessions | LanceDB supports concurrent readers + single writer via WAL; OpenCode typically runs one session at a time | Acceptable — add retry with backoff if write conflicts occur |
 | Database corruption on crash | LanceDB uses Lance format with ACID transactions; data directory backed by append-only columnar files | No special handling needed; Lance format is crash-safe |
 | API key configuration | Currently in Docker env vars; must work via OpenCode plugin config or env vars | Support both: `process.env.VOYAGE_API_KEY` and plugin config file |
+| Privacy stripping gap — `<private>` tags not stripped in auto-save, compaction, or init paths | **Fix in rewrite**: apply `stripPrivateContent()` in all 4 ingestion paths before extraction/storage | See "Key Patterns for Porting" §12; wrap all `store.ingest()` entry points |
+| NAPI-RS async completion in Bun | Bun ignores `async_hooks`; some NAPI-RS modules exit early before async ops complete | Phase 1 spike must stress-test concurrent writes, search-during-write, and optimize(); see spike test script |
+| Compaction state leak (`summarizedSessions`) | Fix bug: `summarizedSessions.add()` called before `summarize()` — if it throws, session permanently skipped | Move `add()` after successful `summarize()` call; see "Key Patterns for Porting" §4 |
 
 ### Medium Priority — Should Resolve, Can Defer
 
@@ -1053,6 +1359,13 @@ bunx opencode-memory install
 | Indentation | Tabs | User preference; enforced across all new files |
 | DB location | `~/.opencode-memory/lancedb/` | Follows XDG-like convention; outside project directory; shared across projects |
 | Plugin folder name | `plugin-v2/` during development, rename to `plugin/` at cutover | Allows parallel development without breaking current system |
+| Name registry persistence | Separate `names.json` file (not LanceDB) | Matches current backend pattern; simple key-value map doesn't benefit from vector storage; `Bun.file()`/`Bun.write()` with in-memory cache |
+| Privacy stripping | Apply in all 4 ingestion paths (not just memory tool `add`) | Bug fix — current plugin only strips in one path; auto-save, compaction, and init paths leak private content |
+| Table optimization schedule | `table.optimize()` on `session.idle` with 24h cooldown | Prevents unbounded Lance fragment file growth; `cleanupOlderThan: 7 days` removes old versions |
+| Logger I/O | Async `Bun.write()` (replace sync `appendFileSync()`) | Sync I/O blocks event loop; `Bun.write()` is non-blocking and Bun-native |
+| Hardcoded values | Centralize all 27 magic numbers in `config.ts` with env var overrides | Currently scattered across 8 files; centralization enables runtime tuning without code changes |
+| JSONC parser | Remove `services/jsonc.ts`, use `Bun.JSONC.parse()` | Built into Bun runtime; eliminates 85 lines of custom code |
+| Compaction state leak fix | Move `summarizedSessions.add()` after successful `summarize()` | Prevents sessions from being permanently skipped for summary extraction on error |
 
 ---
 
@@ -1064,8 +1377,8 @@ bunx opencode-memory install
 | Voyage AI fetch replacement | 10/10 | Trivial HTTP POST; well-documented endpoint; already tested conceptually |
 | Extraction provider fetch | 9/10 | All three providers use OpenAI-compat or simple REST; backend code is the reference |
 | Store logic port (dedup/aging) | 9/10 | Direct port from Python; logic is well-understood from analysis session |
-| Plugin hook integration | 10/10 | Full plugin SDK documented (tool() helper, events, TUI, compaction hooks); swap is mechanical |
-| Compaction survival | 10/10 | Already implemented in current plugin via system.transform (design doc 001) |
+| Plugin hook integration | 9/10 | Full plugin SDK documented; swap is mechanical BUT compaction.ts filesystem I/O is complex (see §3) |
+| Compaction survival | 9/10 | Already implemented; but `injectHookMessage()` JSON format + directory scanning needs careful porting |
 | Telemetry port | 9/10 | Direct port from Python telemetry.py; JSONL append with `Bun.write()` is trivial |
 | CLI tooling | 9/10 | Simple `parseArgs` + store calls; bunx distribution well-documented |
 | Dashboard (hybrid) | 9/10 | Agent inline queries are just formatted store reads; Hono on-demand server is ~100 lines |
@@ -1073,7 +1386,7 @@ bunx opencode-memory install
 | Bun native API usage | 10/10 | `Bun.file()`, `Bun.write()`, `Bun.JSONC.parse()`, `Bun.serve()` all well-documented and stable |
 | OpenCode SDK integration | 9/10 | Full docs fetched (custom tools, TUI, events, logging); SDK types available |
 
-**Overall: 9.3/10** — LanceDB score improved from 7 to 8 after Context7 deep research confirmed full API surface (FTS, hybrid search, upsert). Only remaining unknown is Bun runtime NAPI compat, which Phase 1 spike resolves before any other work begins.
+**Overall: 9.2/10** — Deep codebase analysis revealed important complexity in compaction.ts (filesystem I/O, state machine) and auto-save.ts (streaming buffer, dual tracks) that lowers plugin integration confidence from 10 to 9. Privacy stripping gap identified as a bug to fix. LanceDB confidence remains at 8 pending Bun NAPI spike. All 27 hardcoded values inventoried. Name registry persistence documented.
 
 ---
 
@@ -1195,7 +1508,7 @@ AFTER (embedded):
 
 ### Research Completed
 
-- **LanceDB Node SDK API** (Context7, deep): `connect()`, `createTable()`, `openTable()`, `search()`, `where()`, `limit()`, `toArray()`, plus advanced: FTS indexing (`Index.fts()`), hybrid search with reranking (`Reranker.rrf()`), `mergeInsert()` for upserts, IVF-PQ/HNSW-SQ vector indexes, BTree/Bitmap scalar indexes, `countRows()`, `update()`, `delete()`
+- **LanceDB Node SDK API** (Context7, deep): `connect()`, `createTable()`, `openTable()`, `search()`, `where()`, `limit()`, `toArray()`, plus advanced: FTS indexing (`Index.fts()`), hybrid search with reranking (`Reranker.rrf()`), `mergeInsert()` for upserts, IVF-PQ/HNSW-SQ vector indexes, BTree/Bitmap scalar indexes, `countRows()`, `update()`, `delete()`, `optimize()` (VACUUM: compaction + pruning + index optimization with `cleanupOlderThan`), versioning (`version()`, `listVersions()`, `checkout()`, `restore()`)
 - **Voyage AI API**: `POST /v1/embeddings`, model `voyage-code-3`, 1024 dimensions, `fetch()` compatible, $0.22/1M tokens, 2000 RPM
 - **Backend Python code**: All 11 files analyzed (1,590 lines), every function mapped to TypeScript equivalent
 - **Plugin code**: All 13 files analyzed (2,920 lines), `client.ts` identified as only file needing replacement
@@ -1203,6 +1516,8 @@ AFTER (embedded):
 - **Bun v1.3.9** (Perplexity, Feb 2026): `Bun.file()` / `Bun.write()`, `Bun.JSONC.parse()`, `Bun.serve()`, `Bun.$`, `bun build --compile`, NAPI support confirmed mature (bcrypt, argon2 working), `bunx --bun` flag, version pinning
 - **OpenCode Plugin SDK** (official docs): `tool()` helper with Zod args, `client.tui.showToast()`, `client.app.log()`, `experimental.session.compacting` hook, event subscriptions (`session.created/idle/error`, `tool.execute.before/after`, `file.edited`), plugin dependency loading via `.opencode/package.json`
 - **OpenCode SDK** (official docs): `createOpencode()` client, `session.create/list/get/prompt`, `find.text/files/symbols`, `file.read/status`, `event.subscribe()` SSE, structured output with `format: { type: "json_schema" }`
+- **Deep codebase re-read** (round 2): 13 critical findings — assistantTextBuffer streaming pattern, SDK fetch fallback, compaction filesystem I/O, compaction state machine (3-phase with state leak bug), two parallel auto-save tracks, three extraction modes, enumeration query detection, module-level state caps (5 Maps), dedup vs insert side effects, scope detection heuristic, name registry (names.json), privacy stripping gap (bug), sync logger I/O. All 27 hardcoded values inventoried across plugin (13) and backend (14).
+- **LanceDB + Bun compatibility** (Perplexity): NAPI-RS 90%+ Node test pass rate in Bun; warning on async operations (Bun ignores async_hooks, some modules exit early); no LanceDB-specific issues reported but thorough testing required
 
 ### Next Session Protocol
 
