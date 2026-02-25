@@ -17,22 +17,32 @@ export interface RetryConfig {
 	timeoutMs?: number;
 }
 
-/** Default retry config for LanceDB write operations. */
+/**
+ * Default retry config for LanceDB write operations.
+ *
+ * No timeoutMs — LanceDB NAPI operations are non-cancellable. A Promise.race
+ * timeout would reject the promise but the underlying write still completes,
+ * causing duplicate inserts or inconsistent state on retry.
+ */
 export const DB_RETRY: RetryConfig = {
 	maxRetries: 5,
 	baseDelayMs: 50,
 	maxDelayMs: 5_000,
 	jitter: 0.25,
-	timeoutMs: 5_000,
 };
 
-/** Default retry config for LanceDB search operations (longer timeout than writes). */
+/**
+ * Default retry config for LanceDB search operations.
+ *
+ * No timeoutMs — same non-cancellable rationale as DB_RETRY. Search is
+ * read-only so duplicates aren't a risk, but a timed-out search that
+ * still completes wastes resources and confuses retry accounting.
+ */
 export const DB_SEARCH_RETRY: RetryConfig = {
 	maxRetries: 3,
 	baseDelayMs: 100,
 	maxDelayMs: 5_000,
 	jitter: 0.25,
-	timeoutMs: 30_000,
 };
 
 /** Default retry config for embedding API calls. */

@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 
 import type { ParsedArgs } from "../args.js";
 import * as fmt from "../fmt.js";
@@ -234,7 +235,8 @@ export async function run(_args: ParsedArgs): Promise<void> {
 	// At runtime (compiled), dist/cli.js is 1 level below root. We handle both.
 	const scriptDir = import.meta.dirname ?? process.cwd();
 	const pluginRoot = resolvePluginRoot(scriptDir);
-	const pluginUri = `file://${pluginRoot}`;
+	// pathToFileURL() produces correct file:///absolute/path (3 slashes for POSIX)
+	const pluginUri = pathToFileURL(pluginRoot).toString();
 
 	fmt.info(`Plugin path: ${fmt.blue(pluginRoot)}`);
 	fmt.blank();

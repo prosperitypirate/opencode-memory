@@ -110,7 +110,7 @@ const serverCache = new Map<string, ServerHandle>();
 // Cleanup handler — stop all cached servers on process exit/interrupt
 function cleanupAllServers(): void {
   for (const [dir, handle] of serverCache) {
-    try { handle.process?.kill(); } catch { /* ignore */ }
+    try { handle.proc?.kill(); } catch { /* ignore */ }
     serverCache.delete(dir);
   }
 }

@@ -60,9 +60,11 @@ async function findDuplicate(
 		if (count === 0) return null;
 
 		const safeUserId = validateId(userId, "user_id");
+		// Only match active (non-superseded) memories — prevents reviving stale facts
+		// that were already superseded by contradiction detection.
 		const results = await (table.search(vector) as VectorQuery)
 			.distanceType("cosine")
-			.where(`user_id = '${safeUserId}'`)
+			.where(`user_id = '${safeUserId}' AND superseded_by = ''`)
 			.limit(1)
 			.toArray();
 
