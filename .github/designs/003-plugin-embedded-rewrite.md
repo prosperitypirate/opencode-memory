@@ -147,6 +147,10 @@ All 9 methods become direct calls to embedded store functions. The HTTP layer di
 # line 73  — add_memory()         Insert with dedup + contradiction detection
 # line 130 — search_memories()    Vector search + recency blending + hybrid enum
 # line 170 — enforce_aging()      progress → latest-only; session-summary → cap at 3
+#   - progress: query all by user_id + type, sort by created_at DESC, delete all except newest
+#   - session-summary: query all by user_id + type, sort by created_at DESC
+#     if count > 3: condense oldest into learned-pattern via LLM, then delete condensed summaries
+#     identification: by created_at timestamp (most recent 3 kept, older ones condensed)
 ```
 
 **`backend/app/extractor.py` (443 lines) — LLM extraction**
@@ -242,8 +246,10 @@ The LanceDB Node SDK (`@lancedb/lancedb`) uses napi-rs (Rust via NAPI) for nativ
 ```typescript
 // db.ts — ~50 lines
 import * as lancedb from "@lancedb/lancedb";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const DB_PATH = `${process.env.HOME}/.opencode-memory/lancedb`;
+const DB_PATH = join(homedir(), ".opencode-memory", "lancedb");
 const TABLE_NAME = "memories";
 
 let db: lancedb.Connection;
@@ -650,7 +656,7 @@ let server: ReturnType<typeof Bun.serve> | null = null;
 
 export function startDashboard(port: number = 3030): string {
 	if (server) return `Dashboard already running at http://localhost:${port}`;
-	server = Bun.serve({ fetch: app.fetch, port });
+	server = Bun.serve({ fetch: app.fetch, port, hostname: "127.0.0.1" });
 	return `Dashboard running at http://localhost:${port}`;
 }
 
@@ -1058,6 +1064,117 @@ bun test plugin-v2/src/store.test.ts
 4. **Telemetry from day one** — CostLedger and ActivityLog port as core module; every `fetch()` to Voyage AI or extraction LLMs records tokens/cost to `~/.opencode-memory/costs.jsonl`
 5. **Bun native APIs** — use `Bun.file()` / `Bun.write()` for file I/O, `Bun.JSONC.parse()` for config loading (replaces custom JSONC parser)
 
+**`validateId()` implementation** — concrete input validation for LanceDB `where()` clauses:
+
+```typescript
+// store.ts — input validation before string interpolation in where() filters
+const VALID_ID_PATTERN = /^[a-zA-Z0-9_:.\-]+$/;
+
+function validateId(input: string): string {
+	if (!VALID_ID_PATTERN.test(input)) {
+		throw new Error(`Invalid ID format: "${input}" — only alphanumeric, underscore, colon, dot, hyphen allowed`);
+	}
+	return input;
+}
+
+// Usage in every query:
+const safeUserId = validateId(userId);
+const results = await table
+	.search(queryVector)
+	.where(`user_id = '${safeUserId}' AND superseded_by = ''`)
+	.limit(20)
+	.toArray();
+```
+
+**Extraction provider error handling:**
+
+```typescript
+// extractor.ts — fallback order + retry with exponential backoff
+const PROVIDER_FALLBACK_ORDER = ["anthropic", "xai", "google"] as const;
+
+interface RetryConfig {
+	maxRetries: number;      // 3
+	baseDelayMs: number;     // 500ms
+	maxDelayMs: number;      // 10000ms
+	jitter: number;          // 0.25 (±25%)
+	timeoutMs: number;       // 30000ms per attempt
+}
+
+export async function callLlm(system: string, user: string): Promise<string> {
+	const primary = config.EXTRACTION_PROVIDER;
+	const fallbackOrder = [primary, ...PROVIDER_FALLBACK_ORDER.filter(p => p !== primary)];
+
+	for (const provider of fallbackOrder) {
+		try {
+			return await callWithRetry(provider, system, user, {
+				maxRetries: 3,
+				baseDelayMs: 500,
+				maxDelayMs: 10000,
+				jitter: 0.25,
+				timeoutMs: 30000,
+			});
+		} catch (error) {
+			client.app.log({ body: {
+				service: "opencode-memory",
+				level: "warn",
+				message: `Provider ${provider} failed after retries: ${error.message}`,
+			}});
+			// Try next provider in fallback order
+		}
+	}
+	// All providers exhausted — log error, return empty (silent degradation)
+	client.app.log({ body: {
+		service: "opencode-memory",
+		level: "error",
+		message: "All extraction providers failed — skipping extraction for this turn",
+	}});
+	return "[]"; // Empty JSON array — no memories extracted
+}
+```
+
+**Silent degradation rationale**: Extraction failure should never block the user's coding session. The memory system degrades gracefully — this turn's conversation won't be extracted, but the next turn will retry. Users see degradation via `memory({ mode: "activity" })` which shows error rates.
+
+**LanceDB write conflict retry:**
+
+```typescript
+// store.ts — retry with exponential backoff for write conflicts
+async function withRetry<T>(
+	operation: () => Promise<T>,
+	label: string,
+	maxRetries: number = 5,
+	baseMs: number = 50,
+): Promise<T> {
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
+		try {
+			return await operation();
+		} catch (error) {
+			if (attempt === maxRetries) throw error;
+			const delay = baseMs * Math.pow(2, attempt) * (1 + Math.random() * 0.25);
+			client.app.log({ body: {
+				service: "opencode-memory",
+				level: "warn",
+				message: `${label} attempt ${attempt + 1} failed, retrying in ${Math.round(delay)}ms`,
+			}});
+			await Bun.sleep(delay);
+		}
+	}
+	throw new Error("unreachable");
+}
+
+// Usage:
+await withRetry(() => table.add(records), "LanceDB write");
+```
+
+**Operation timeouts:**
+
+| Operation | Timeout | Retry |
+|-----------|---------|-------|
+| Embed (Voyage AI) | 10s | 3 attempts |
+| Extract (LLM) | 30s | 3 attempts + provider fallback |
+| LanceDB write | 5s | 5 attempts (50ms base backoff) |
+| LanceDB search | 10s | 3 attempts |
+| LanceDB delete | 5s | 3 attempts |
+
 **Success Criteria:**
 - All modules compile (`bun build`)
 - Unit tests pass for db, embedder (mocked), store (integration with real LanceDB)
@@ -1135,7 +1252,8 @@ async function ensureInitialized(): Promise<void> {
 **Goal**: Add terminal commands for memory inspection without requiring a web dashboard  
 **Duration**: 1 day  
 **Dependencies**: Phase 2  
-**Status**: PENDING
+**Status**: PENDING  
+**Criticality**: **Non-blocking stretch goal.** Phase 4 runs in parallel with Phase 3 (shares Phase 2 dependency) but is NOT on the critical path. Core memory functionality (Phases 1-3) ships without CLI. Phase 5 validation tests core plugin, not CLI. Phase 6 cutover does not depend on CLI being complete. Dashboard (Hono) is part of Phase 4 — also non-blocking.
 
 **Deliverables:**
 - [ ] `plugin-v2/src/cli/index.ts` — CLI entry point with subcommands
@@ -1158,23 +1276,27 @@ import { parseArgs } from "util";
 import { init } from "../db.js";
 import * as store from "../store.js";
 
-const { positionals } = parseArgs({
+const { positionals, values } = parseArgs({
 	allowPositionals: true,
+	options: {
+		user: { type: "string", short: "u" },
+	},
 });
 
 const [command, ...args] = positionals;
+const userId = values.user || "default";
 
 await init();
 
 switch (command) {
 	case "list":
-		const memories = await store.list(args[0] || "default", { limit: 20 });
+		const memories = await store.list(userId, { limit: 20 });
 		for (const m of memories) {
 			console.log(`[${m.type}] ${m.memory}`);
 		}
 		break;
 	case "search":
-		const results = await store.search(args.join(" "), args[0] || "default");
+		const results = await store.search(args.join(" "), userId);
 		// ...
 		break;
 	// ...
@@ -1234,7 +1356,7 @@ This is a stretch goal for distribution — useful for users who don't have Bun 
 
 ```bash
 # 1. Point OpenCode to plugin-v2
-# Update ~/.config/opencode/config.json to load plugin-v2/ instead of plugin/
+# Update ~/.config/opencode/opencode.json to load plugin-v2/ instead of plugin/
 
 # 2. Run E2E test suite
 cd testing && bun run test
@@ -1309,7 +1431,7 @@ bunx opencode-memory install
 | Edge Case | Decision | Implementation |
 |-----------|----------|----------------|
 | LanceDB NAPI doesn't work in OpenCode runtime | Phase 1 spike is the gate; if it fails, evaluate alternatives (sqlite-vss, chromadb) | Run spike before any other work |
-| Concurrent writes from multiple OpenCode sessions | LanceDB supports concurrent readers + single writer via WAL; OpenCode typically runs one session at a time | Acceptable — add retry with backoff if write conflicts occur |
+| Concurrent writes from multiple OpenCode sessions | LanceDB supports concurrent readers + single writer via WAL; OpenCode typically runs one session at a time | Retry with exponential backoff: base 50ms, max 5 retries, ±25% jitter. See Phase 2 `withRetry()` implementation |
 | Database corruption on crash | LanceDB uses Lance format with ACID transactions; data directory backed by append-only columnar files | No special handling needed; Lance format is crash-safe |
 | API key configuration | Currently in Docker env vars; must work via OpenCode plugin config or env vars | Support both: `process.env.VOYAGE_API_KEY` and plugin config file |
 | Privacy stripping gap — `<private>` tags not stripped in auto-save, compaction, or init paths | **Fix in rewrite**: apply `stripPrivateContent()` in all 4 ingestion paths before extraction/storage | See "Key Patterns for Porting" §12; wrap all `store.ingest()` entry points |
@@ -1321,9 +1443,25 @@ bunx opencode-memory install
 | Edge Case | Proposed Approach | Deferral Risk |
 |-----------|-------------------|---------------|
 | Large memory databases (>10K memories) | LanceDB handles millions of rows; no index needed below 100K | Low — single-user system unlikely to exceed 10K |
-| Voyage AI rate limits (2000 RPM) | Current usage is ~5-10 RPM; no rate limiting needed | Low — would need 200x current usage to hit limits |
+| Voyage AI rate limits (2000 RPM) | Current usage ~10-30 RPM in dense sessions; no rate limiting needed | Low — see RPM analysis below |
 | LanceDB disk usage growth | Lance format compacts automatically; monitor `~/.opencode-memory/` size | Low — text + 1024-dim vectors are small per record |
 | Platform-specific NAPI binaries | `@lancedb/lancedb` publishes binaries for macOS ARM/Intel, Linux x64/ARM, Windows x64 | Medium — untested platforms may need build from source |
+
+**Voyage AI RPM Analysis:**
+
+Per-turn embedding calls breakdown:
+- Turn 1: 1 embed (user query for semantic search) + 0-N embeds from extraction (batched, ~1 call)
+- Turn 2+: 1 embed (per-turn refresh query) + 0-N from extraction
+- Auto-save extraction: each extracted memory gets 1 embed call (typically 3-8 per extraction)
+- Session summary: 1 embed call per summary
+
+Realistic dense session (10 turns, 1 hour):
+- Semantic searches: 10 turns × 1 embed = 10 calls
+- Extractions: ~5 extraction events × 5 memories avg × 1 embed = 25 calls
+- Summaries: 2 summaries × 1 embed = 2 calls
+- **Total: ~37 calls/hour ≈ 0.6 RPM** (2000 RPM limit → 3,300x headroom)
+
+Even extreme edge case (100 turns/hour with extraction every turn): ~500 calls/hour ≈ 8.3 RPM. Rate limiting is not needed.
 
 ### Low Priority — Acceptable to Leave Unresolved
 
