@@ -29,6 +29,8 @@ interface CompactionState {
 	lastCompactionTime: Map<string, number>;
 	compactionInProgress: Set<string>;
 	summarizedSessions: Set<string>;
+	/** Guards against double-fire of summary events from OpenCode */
+	processingSummary: Set<string>;
 }
 
 interface TokenInfo {
@@ -268,6 +270,7 @@ export function createCompactionHook(
 		lastCompactionTime: new Map(),
 		compactionInProgress: new Set(),
 		summarizedSessions: new Set(),
+		processingSummary: new Set(),
 	};
 
 	const threshold = options?.threshold ?? DEFAULT_THRESHOLD;
@@ -446,12 +449,33 @@ export function createCompactionHook(
 	}
 
 	async function handleSummaryMessage(sessionID: string, _messageInfo: MessageInfo): Promise<void> {
-		log("[compaction] handleSummaryMessage called", { sessionID, inSet: state.summarizedSessions.has(sessionID) });
+		const wasPluginTriggered = state.summarizedSessions.has(sessionID);
 
-		if (!state.summarizedSessions.has(sessionID)) return;
+		log("[compaction] handleSummaryMessage called", {
+			sessionID,
+			source: wasPluginTriggered ? "plugin" : "opencode",
+		});
 
-		state.summarizedSessions.delete(sessionID);
-		log("[compaction] capturing summary for memory", { sessionID });
+		// Dedup guard: OpenCode fires duplicate message.updated events for summary messages.
+		// Skip if we're already processing this session's summary.
+		if (state.processingSummary.has(sessionID)) {
+			log("[compaction] skipping duplicate summary event", { sessionID });
+			return;
+		}
+		state.processingSummary.add(sessionID);
+
+		if (wasPluginTriggered) {
+			state.summarizedSessions.delete(sessionID);
+		} else {
+			// OpenCode triggered compaction — we didn't get to inject context beforehand,
+			// but we should still: (1) save the summary as memory, (2) trigger cache refresh.
+			log("[compaction] opencode-triggered compaction detected — capturing summary", { sessionID });
+
+			if (options?.onCompaction) {
+				log("[compaction] triggering cache refresh for opencode-triggered compaction", { sessionID });
+				options.onCompaction(sessionID);
+			}
+		}
 
 		try {
 			const resp = await ctx.client.session.messages({
@@ -471,8 +495,9 @@ export function createCompactionHook(
 
 			log("[compaction] looking for summary message", {
 				sessionID,
+				source: wasPluginTriggered ? "plugin" : "opencode",
 				found: !!summaryMessage,
-				hasParts: !!summaryMessage?.parts
+				hasParts: !!summaryMessage?.parts,
 			});
 
 			if (summaryMessage?.parts) {
@@ -482,7 +507,7 @@ export function createCompactionHook(
 				log("[compaction] summary content", {
 					sessionID,
 					textPartsCount: textParts.length,
-					contentLength: summaryContent.length
+					contentLength: summaryContent.length,
 				});
 
 				if (summaryContent) {
@@ -491,6 +516,8 @@ export function createCompactionHook(
 			}
 		} catch (err) {
 			log("[compaction] failed to capture summary", { error: String(err) });
+		} finally {
+			state.processingSummary.delete(sessionID);
 		}
 	}
 
@@ -504,6 +531,7 @@ export function createCompactionHook(
 					state.lastCompactionTime.delete(sessionInfo.id);
 					state.compactionInProgress.delete(sessionInfo.id);
 					state.summarizedSessions.delete(sessionInfo.id);
+					state.processingSummary.delete(sessionInfo.id);
 				}
 				return;
 			}
