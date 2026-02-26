@@ -1,7 +1,7 @@
 # codexfi.com Website — Design Document
 
 **Feature**: Build and deploy codexfi.com — landing page + documentation site  
-**Issue**: TBD  
+**Issue**: #64  
 **Branch**: `feature/website-design-doc`  
 **Status**: PLANNING  
 **Created**: February 26, 2026  
@@ -108,10 +108,10 @@ codexfi/
 │  │  @0.4.1      │          │  │ Landing    │ │ Docs        │ │ │
 │  │              │          │  │ page (/)   │ │ (/docs/*)   │ │ │
 │  │  Builds via  │          │  │            │ │             │ │ │
-│  │  bun/tsup    │          │  │ Custom     │ │ Fumadocs    │ │ │
+│  │  bun build   │          │  │ Custom     │ │ Fumadocs    │ │ │
 │  │              │          │  │ Next.js    │ │ MDX engine  │ │ │
 │  │  Deploys via │          │  │ + shadcn   │ │ + search    │ │ │
-│  │  npm OIDC    │          │  │ + Framer   │ │ + sidebar   │ │ │
+│  │  npm OIDC    │          │  │ + Motion   │ │ + sidebar   │ │ │
 │  │              │          │  └────────────┘ └─────────────┘ │ │
 │  └──────────────┘          │                                  │ │
 │        │                   │  Deploys via Vercel Git          │ │
@@ -129,7 +129,7 @@ The `plugin/` and `website/` packages are **fully independent**:
 
 | Aspect | `plugin/` | `website/` |
 |--------|-----------|------------|
-| Package manager | pnpm (bun for builds) | pnpm |
+| Package manager | Bun | pnpm |
 | Lockfile | `plugin/bun.lock` | `website/pnpm-lock.yaml` |
 | Runtime dependencies | LanceDB, Voyage AI, Zod | React, Next.js, Fumadocs, Tailwind |
 | Build system | bun build → dist/ | Next.js build → .next/ |
@@ -213,7 +213,7 @@ The landing page (`/`) is a custom page **outside** the Fumadocs layout. Fumadoc
 | Technology | Purpose |
 |-----------|---------|
 | **shadcn/ui** | Copy-paste component library (Radix UI + Tailwind). Cards, buttons, code blocks, navigation. |
-| **Framer Motion** (`framer-motion`) | Scroll-triggered animations, viewport reveals, micro-interactions on landing page |
+| **Motion** (`motion`) | Scroll-triggered animations, viewport reveals, micro-interactions on landing page. Import from `motion/react`. |
 | **Lucide React** | Icon library (shadcn/ui default) |
 | **next-themes** | Dark/light mode toggle (dark by default) |
 
@@ -359,15 +359,15 @@ A responsive grid of feature cards, each with an icon, title, and short descript
 | **Typed Memory** | Tags/Categories | 10+ memory types — architecture, tech-context, progress, preferences, and more |
 | **Semantic Search** | Search/Magnifier | Voyage AI embeddings find relevant context for every new task |
 | **Compaction Survival** | Shield/Lock | Memory persists through context window compaction — nothing is lost |
-| **Zero Config** | Plug/Zap | One command install. No Docker, no database setup, no API keys to manage |
+| **Zero Config** | Plug/Zap | One command install. No Docker, no external database. Bring your own LLM + Voyage AI keys. |
 | **Session Continuity** | Link/Chain | Pick up exactly where you left off — your AI knows the full project history |
-| **Local & Private** | Lock/Eye-off | All data stays on your machine. No cloud sync, no external persistence |
+| **Local & Private** | Lock/Eye-off | Memory storage is fully local (LanceDB on disk). Embeddings are sent to Voyage AI for vectorization. No cloud sync, no external persistence layer. |
 | **Smart Aging** | Clock/Refresh | Old memories are automatically consolidated and evolved, never duplicated |
 
 **Card Design:**
 - Dark surface with subtle border
 - Icon with accent color glow
-- Hover effect: slight lift + glow intensify (Framer Motion)
+- Hover effect: slight lift + glow intensify (Motion)
 - Responsive: 2 columns on mobile, 3-4 on desktop
 
 **Scroll Animation:**
@@ -450,12 +450,12 @@ export default defineConfig();
 
 **`lib/source.ts`** — Source loader for page tree:
 ```typescript
-import { docs } from '@/.source';
-import { createMDXSource } from 'fumadocs-mdx';
+import { docs } from 'fumadocs-mdx:collections/server';
 import { loader } from 'fumadocs-core/source';
 
 export const source = loader({
-  source: createMDXSource(docs),
+  baseUrl: '/docs',
+  source: docs.toFumadocsSource(),
 });
 ```
 
@@ -511,17 +511,28 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 ```
 
-**Landing page** (`app/(home)/page.tsx`) — custom, outside Fumadocs layout:
+**Landing page layout** (`app/(home)/layout.tsx`) — uses HomeLayout from Fumadocs for consistent nav:
 ```typescript
-// Uses HomeLayout from Fumadocs for consistent nav, but custom content
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { baseOptions } from '@/lib/layout.shared';
+import type { ReactNode } from 'react';
 
-export default function HomePage() {
+export default function Layout({ children }: { children: ReactNode }) {
   return (
     <HomeLayout {...baseOptions()}>
-      {/* Custom hero, features, how-it-works, footer */}
+      {children}
     </HomeLayout>
+  );
+}
+```
+
+**Landing page** (`app/(home)/page.tsx`) — custom content, outside Fumadocs docs layout:
+```typescript
+export default function HomePage() {
+  return (
+    <>
+      {/* Custom hero, features, how-it-works, footer */}
+    </>
   );
 }
 ```
@@ -673,11 +684,20 @@ For launch, the minimum viable documentation set:
 | Event | What Happens |
 |-------|-------------|
 | PR created/updated (touches `website/`) | Vercel creates a **preview deployment** with a unique URL |
-| PR created/updated (only touches `plugin/`) | Vercel **skips build** — no wasted compute |
+| PR created/updated (only touches `plugin/`) | Vercel **skips build** (requires `ignoreCommand` — see below) |
 | Merge to `main` (touches `website/`) | Vercel creates a **production deployment** at codexfi.com |
-| Merge to `main` (only touches `plugin/`) | Vercel **skips build** |
+| Merge to `main` (only touches `plugin/`) | Vercel **skips build** (requires `ignoreCommand`) |
 
-Vercel's path-based filtering is automatic when Root Directory is set to `website`. It only triggers builds when files within that directory change.
+**Important**: Setting Root Directory alone does **not** automatically skip builds when only files outside `website/` change. Without workspace configuration (`pnpm-workspace.yaml`), Vercel has no way to infer which commits affect the project. We must configure the **Ignored Build Step** to achieve this:
+
+```json
+// website/vercel.json
+{
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
+}
+```
+
+This tells Vercel to skip the build if no files within the Root Directory (`website/`) changed between the current and previous commit. Vercel runs this command from the Root Directory, so `.` refers to `website/`.
 
 #### Domain Configuration
 
@@ -719,19 +739,36 @@ While Vercel's preview builds already catch build failures, we could add a light
 
 ```yaml
 # In .github/workflows/ci.yml — optional addition
+# Uses dorny/paths-filter (already in our CI) to gate on website/ changes
 website-build:
+  name: Website Build
   runs-on: ubuntu-latest
-  if: contains(github.event.pull_request.changed_files, 'website/')
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
+
+    - uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          website:
+            - 'website/**'
+
     - uses: pnpm/action-setup@v4
+      if: steps.changes.outputs.website == 'true'
     - uses: actions/setup-node@v4
+      if: steps.changes.outputs.website == 'true'
       with:
         node-version: 22
     - run: pnpm install
+      if: steps.changes.outputs.website == 'true'
       working-directory: website
     - run: pnpm build
+      if: steps.changes.outputs.website == 'true'
       working-directory: website
+
+    - name: Skip — no website changes
+      if: steps.changes.outputs.website != 'true'
+      run: echo "No website changes detected — skipping build"
 ```
 
 **Decision**: Defer this. Vercel's preview build is the primary gate. We can add a CI check later if needed for branch protection rules.
@@ -802,7 +839,7 @@ website/
     og-image.png                    # Open Graph image for social sharing
   source.config.ts                  # Fumadocs MDX configuration
   next.config.mjs                   # Next.js configuration
-  tailwind.config.ts                # Tailwind CSS configuration
+  vercel.json                       # Vercel config (ignoreCommand for build skipping)
   tsconfig.json                     # TypeScript configuration
   package.json                      # Independent package
   pnpm-lock.yaml                    # Independent lockfile
@@ -911,48 +948,32 @@ export function MemoryFlowSVG() {
 
 ### Tailwind CSS Configuration
 
-```typescript
-// tailwind.config.ts
-import type { Config } from 'tailwindcss';
+Tailwind CSS v4 uses **CSS-first configuration** — no `tailwind.config.ts` file. All customization is done via CSS directives in the global stylesheet. Content detection is automatic (no `content` array needed). Dark mode uses CSS custom variants instead of `darkMode: 'class'`.
 
-const config: Config = {
-  darkMode: 'class',
-  content: [
-    './app/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './content/**/*.mdx',
-    './node_modules/fumadocs-ui/dist/**/*.js',
-  ],
-  theme: {
-    extend: {
-      colors: {
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-        accent: {
-          DEFAULT: '#3b82f6',
-          light: '#60a5fa',
-          glow: 'rgba(59, 130, 246, 0.2)',
-        },
-        surface: {
-          DEFAULT: '#1a1a1a',
-          elevated: '#1e1e1e',
-        },
-        terminal: {
-          green: '#4ade80',
-        },
-      },
-      fontFamily: {
-        sans: ['var(--font-geist-sans)', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'JetBrains Mono', 'monospace'],
-      },
-    },
-  },
-};
+```css
+/* app/global.css */
+@import "tailwindcss";
 
-export default config;
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Custom colors for codexfi dark theme */
+  --color-accent: #3b82f6;
+  --color-accent-light: #60a5fa;
+  --color-accent-glow: rgba(59, 130, 246, 0.2);
+  --color-surface: #1a1a1a;
+  --color-surface-elevated: #1e1e1e;
+  --color-terminal-green: #4ade80;
+
+  /* Typography — Geist fonts loaded via next/font */
+  --font-sans: var(--font-geist-sans), 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'JetBrains Mono', monospace;
+}
 ```
 
-### Animation Patterns (Framer Motion)
+**Note**: shadcn/ui will scaffold additional theme variables (oklch-based color tokens for `--background`, `--foreground`, `--primary`, etc.) when initialized. The colors above are custom additions for the landing page aesthetic. Fumadocs UI classes are auto-detected by Tailwind v4's content scanning.
+
+### Animation Patterns (Motion)
 
 **Scroll reveal variant** — reusable across landing page sections:
 ```typescript
@@ -978,8 +999,7 @@ export const scaleIn = {
 
 **Usage pattern:**
 ```tsx
-import { motion } from 'framer-motion';
-import { useInView } from 'framer-motion';
+import { motion, useInView } from 'motion/react';
 
 function Section({ children }) {
   const ref = useRef(null);
@@ -1000,10 +1020,10 @@ function Section({ children }) {
 
 ### Reduced Motion Support
 
-All Framer Motion animations must respect user preferences:
+All Motion animations must respect user preferences:
 
 ```typescript
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from 'motion/react';
 
 function AnimatedComponent() {
   const prefersReducedMotion = useReducedMotion();
@@ -1063,7 +1083,7 @@ function AnimatedComponent() {
 | 3 | Website folder name | `website/` | Unambiguous. Doesn't conflict with future `docs/` folder. OSS convention. |
 | 4 | Docs framework | Fumadocs | Purpose-built for Next.js App Router. Built-in search, sidebar, dark mode, MDX. Full control over non-docs pages. |
 | 5 | Component library | shadcn/ui (copy-paste, Radix UI + Tailwind) | Dark dev-tool aesthetic. Zero runtime dependency. Accessible by default. Fully customizable. |
-| 6 | Animation library | Framer Motion (`framer-motion`) | Best-in-class for scroll reveals and micro-interactions. React-native API. Production-proven. |
+| 6 | Animation library | Motion (`motion`, import from `motion/react`) | Best-in-class for scroll reveals and micro-interactions. React-native API. Production-proven. Rebranded from Framer Motion. |
 | 7 | SVG design tool | Google Gemini 3.1 Pro (design-time only) | Best-in-class animated SVG generation from text prompts. Pure code output, not pixels. Design-time tool, not runtime dependency. |
 | 8 | Deployment | Vercel Git integration (not GitHub Actions) | Zero-config. Automatic preview deploys on PRs. Automatic production deploys on merge. No secrets needed. Built-in path filtering for monorepos. |
 | 9 | Custom domain | codexfi.com (already owned) | Direct from Vercel project settings. Automatic HTTPS. |
@@ -1139,14 +1159,15 @@ git revert <merge-commit-hash>
 - [ ] `website/package.json` — Independent package with all dependencies
 - [ ] `website/source.config.ts` — Fumadocs content configuration
 - [ ] `website/next.config.mjs` — Next.js + Fumadocs MDX plugin
-- [ ] `website/tailwind.config.ts` — Tailwind with custom dark theme colors
+- [ ] `website/app/global.css` — Tailwind v4 CSS-first config with custom dark theme colors via `@theme`
 - [ ] `website/app/layout.tsx` — Root layout with RootProvider
 - [ ] `website/app/docs/layout.tsx` — Docs layout with DocsLayout
 - [ ] `website/app/docs/[[...slug]]/page.tsx` — Dynamic docs renderer
 - [ ] `website/lib/source.ts` — Content source loader
 - [ ] `website/lib/layout.shared.ts` — Shared layout options
 - [ ] shadcn/ui initialized (New York style, dark mode, CSS variables)
-- [ ] `framer-motion` and `lucide-react` installed
+- [ ] `motion` package installed (import from `motion/react`) and `lucide-react` installed
+- [ ] `website/vercel.json` — `ignoreCommand` for build skipping when only non-website files change
 - [ ] Root `.gitignore` updated for `website/`
 
 **Success Criteria:**
@@ -1173,7 +1194,7 @@ git revert <merge-commit-hash>
 - [ ] `website/components/landing/install-block.tsx` — Terminal-style install CTA
 - [ ] `website/components/landing/footer.tsx` — Site footer
 - [ ] `website/components/svg/memory-flow.tsx` — Placeholder SVG (replaced in Phase 4)
-- [ ] Framer Motion scroll animations on all sections
+- [ ] Motion scroll animations on all sections
 - [ ] Responsive design (mobile, tablet, desktop)
 - [ ] `prefers-reduced-motion` support
 
@@ -1272,10 +1293,10 @@ git revert <merge-commit-hash>
 | Next.js App Router | 9/10 | Well-documented, widely used |
 | Fumadocs configuration | 8/10 | Researched via Context7, clear patterns |
 | shadcn/ui integration | 9/10 | Well-documented, used extensively |
-| Framer Motion animations | 9/10 | Researched scroll animations, variants, useInView |
+| Motion animations | 9/10 | Researched scroll animations, variants, useInView via `motion/react` |
 | SVG hero design | 7/10 | Depends on Gemini 3.1 Pro output quality — iterative process |
 | Vercel Git deployment | 9/10 | Straightforward monorepo setup, well-documented |
-| Tailwind CSS dark theme | 9/10 | Standard CSS variables approach |
+| Tailwind CSS dark theme | 9/10 | CSS-first v4 configuration with `@theme` and `@custom-variant` |
 | Content writing (docs) | 8/10 | Content exists in README.md and design docs; needs adaptation |
 | DNS/domain configuration | 9/10 | Standard Vercel domain setup |
 
