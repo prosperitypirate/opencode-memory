@@ -12,7 +12,58 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ── Load benchmark/.env.local regardless of CWD ────────────────────────────
+// Bun only auto-loads .env from cwd. When run from project root, benchmark/.env.local
+// (which has JUDGE_MODEL, ANSWERING_MODEL, ANTHROPIC_API_KEY, etc.) would be missed.
+// .env.local follows standard convention: it OVERRIDES root .env values.
+const __benchmarkDir = join(dirname(fileURLToPath(import.meta.url)), "..");
+const localEnvPath = join(__benchmarkDir, ".env.local");
+const loadedFromLocal: Array<{ key: string; masked: string; overrode: boolean }> = [];
+
+if (existsSync(localEnvPath)) {
+	const envContent = readFileSync(localEnvPath, "utf-8");
+	for (const line of envContent.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith("#")) continue;
+		const eqIdx = trimmed.indexOf("=");
+		if (eqIdx === -1) continue;
+		const key = trimmed.slice(0, eqIdx).trim();
+		const value = trimmed.slice(eqIdx + 1).trim();
+		const hadPrevious = key in process.env && process.env[key] !== value;
+		// .env.local OVERRIDES root .env — this is standard .env.local semantics
+		process.env[key] = value;
+		// Log presence and length only — no substrings of secrets in CI logs
+		const isSecret = /key|token|secret/i.test(key);
+		const masked = isSecret
+			? `[${value.length} chars]`
+			: (value.length <= 8 ? value : `${value.slice(0, 4)}...${value.slice(-4)}`);
+		loadedFromLocal.push({ key, masked, overrode: hadPrevious });
+	}
+}
+
+// ── Verification: always log what benchmark/.env.local provided ─────────────
+const DIM = "\x1b[2m";
+const BOLD = "\x1b[1m";
+const GREEN = "\x1b[32m";
+const YELLOW = "\x1b[33m";
+const RED = "\x1b[31m";
+const CYAN = "\x1b[36m";
+const RESET = "\x1b[0m";
+
+if (loadedFromLocal.length > 0) {
+	console.log(`\n${CYAN}${BOLD}── benchmark/.env.local ${"─".repeat(30)}${RESET}`);
+	for (const { key, masked, overrode } of loadedFromLocal) {
+		const tag = overrode ? `${YELLOW}(overrode root .env)${RESET}` : `${DIM}(set)${RESET}`;
+		console.log(`  ${GREEN}${key}${RESET} = ${masked} ${tag}`);
+	}
+	console.log();
+} else {
+	console.log(`${RED}WARNING: benchmark/.env.local not found or empty at ${localEnvPath}${RESET}`);
+	console.log(`${RED}JUDGE_MODEL, ANSWERING_MODEL, and ANTHROPIC_API_KEY may be incorrect!${RESET}\n`);
+}
 import { randomBytes } from "node:crypto";
 
 import type { Checkpoint, UnifiedSession, UnifiedQuestion } from "./types.js";
@@ -24,7 +75,7 @@ import {
   isPhaseComplete,
   reportPath,
 } from "./utils/checkpoint.js";
-import { OpencodeMemoryProvider } from "./providers/opencode-memory.js";
+import { OpencodeMemoryProvider } from "./providers/codexfi.js";
 import { runIngest }   from "./pipeline/ingest.js";
 import { runSearch }   from "./pipeline/search.js";
 import { runAnswer }   from "./pipeline/answer.js";
@@ -68,11 +119,11 @@ async function cmdRun(args: string[]): Promise<void> {
   console.log(`\n  DevMemBench — Coding Assistant Memory Benchmark`);
   console.log(`  ${"─".repeat(48)}`);
   console.log(`  Run ID  : ${runId}`);
-  console.log(`  Provider: opencode-memory`);
+  console.log(`  Provider: codexfi`);
   console.log(`  Judge   : ${config.judgeModel}`);
   console.log(`  Sessions: ${sessions.length}   Questions: ${questions.length}\n`);
 
-  emit({ type: "run_start", runId, provider: "opencode-memory", judgeModel: config.judgeModel, sessions: sessions.length, questions: questions.length });
+  emit({ type: "run_start", runId, provider: "codexfi", judgeModel: config.judgeModel, sessions: sessions.length, questions: questions.length });
 
   // Load or create checkpoint
   let cp = loadCheckpoint(runId);
@@ -82,7 +133,7 @@ async function cmdRun(args: string[]): Promise<void> {
     cp = {
       runId,
       runTag: `bench_devmem_${runId}`,
-      provider: "opencode-memory",
+      provider: "codexfi",
       judgeModel: config.judgeModel,
       answeringModel: config.answeringModel,
       startedAt: new Date().toISOString(),
@@ -91,7 +142,7 @@ async function cmdRun(args: string[]): Promise<void> {
     saveCheckpoint(cp);
   }
 
-  const provider = new OpencodeMemoryProvider(config.backendUrl);
+  const provider = new OpencodeMemoryProvider();
   await provider.initialize();
 
   // ── Pipeline ──────────────────────────────────────────────────────────────────

@@ -1,11 +1,14 @@
 {
-  "name": "opencode-memory-testing",
+  "name": "codexfi-testing",
   "version": "0.1.0",
   "private": true,
-  "description": "End-to-end tests for the opencode-memory plugin — fully autonomous, no user interaction required",
+  "description": "Tests for the codexfi plugin — unit, integration, and E2E",
   "scripts": {
-    "test": "bun run src/runner.ts",
-    "test:scenario": "bun run src/runner.ts --scenario"
+    "test": "bun test src/unit/ src/integration/",
+    "test:unit": "bun test src/unit/",
+    "test:integration": "bun test src/integration/",
+    "test:e2e": "bun run src/e2e/runner.ts",
+    "test:e2e:scenario": "bun run src/e2e/runner.ts --scenario"
   },
   "dependencies": {},
   "devDependencies": {

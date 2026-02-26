@@ -36,24 +36,24 @@ jobs:
           model: anthropic/claude-sonnet-4-6
           share: false
           prompt: |
-            ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.task != '' && github.event.inputs.task != 'Run the full weekly scan' && format('Manual task requested: {0}\n\nAfter completing this task, also run the weekly scan below.\n\n', github.event.inputs.task) || '' }}Weekly automated scan for the opencode-memory project.
+            ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.task != '' && github.event.inputs.task != 'Run the full weekly scan' && format('Manual task requested: {0}\n\nAfter completing this task, also run the weekly scan below.\n\n', github.event.inputs.task) || '' }}Weekly automated scan for the codexfi project.
 
             Perform the following checks across the entire codebase
-            (plugin/, backend/, frontend/, memory server):
+            (plugin/, testing/, benchmark/):
 
             1. **TODOs and FIXMEs** — find all TODO/FIXME/HACK comments. For each,
                assess whether it represents a real gap. Group findings and open a
                single GitHub issue summarising them if there are 3 or more.
 
             2. **Security smells** — look for hardcoded secrets, unvalidated inputs,
-               missing auth checks, or dangerous patterns in the Python backend
-               (FastAPI routes) and TypeScript plugin.
+               missing auth checks, or dangerous patterns in the TypeScript plugin
+               and CLI commands.
 
             3. **Dead code** — identify exported functions, API routes, or components
                that appear unused. List them as suggestions, not blockers.
 
-            4. **Dependency drift** — check package.json (plugin/, frontend/) and
-               backend/requirements.txt for obviously outdated or insecure packages.
+            4. **Dependency drift** — check package.json (plugin/, testing/, benchmark/)
+               for obviously outdated or insecure packages.
                Open an issue if you find anything critical.
 
             5. **Memory system health** — review the LanceDB schema, embedding

@@ -8,13 +8,13 @@
 
 ## Reporting a Vulnerability
 
-We take the security of opencode-memory seriously. If you discover a security vulnerability, please report it responsibly.
+We take the security of codexfi seriously. If you discover a security vulnerability, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
 ### How to report
 
-1. **Preferred:** Use GitHub's [private vulnerability reporting](https://github.com/prosperitypirate/opencode-memory/security/advisories/new) feature.
+1. **Preferred:** Use GitHub's [private vulnerability reporting](https://github.com/prosperitypirate/codexfi/security/advisories/new) feature.
 2. **Alternative:** Email security concerns to the maintainers via the contact listed on the organization profile.
 
 ### What to include
@@ -32,12 +32,11 @@ We take the security of opencode-memory seriously. If you discover a security vu
 
 ### Scope
 
-This project runs as a **local, self-hosted service**. The primary security concerns are:
+This project runs as a **local, embedded Bun plugin**. The primary security concerns are:
 
-- API key exposure (XAI, Voyage AI)
+- API key exposure (Anthropic, xAI, Voyage AI)
 - Data injection via LanceDB query parameters
-- Unauthorized access to stored memories
-- Docker container security
+- Unauthorized access to stored memories (~/.codexfi/)
 
 ### Out of scope
 
