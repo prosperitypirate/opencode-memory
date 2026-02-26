@@ -175,8 +175,9 @@ function checkPluginRegistered(): CheckResult {
 			const plugins = (config.plugin as string[]) ?? [];
 
 			// Check if any plugin entry looks like it points to this package
+			// Also match "opencode-memory/plugin" for pre-rename dev installs
 			const hasMemory = plugins.some(
-				(p) => p.includes("codexfi") || p.includes("opencode-memory") || p.includes("plugin-v2"),
+				(p) => p.includes("codexfi") || p.includes("opencode-memory/plugin"),
 			);
 
 			if (hasMemory) {

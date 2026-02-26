@@ -39,7 +39,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/prosperitypirate/opencode-memory.git",
+		"url": "https://github.com/prosperitypirate/codexfi.git",
 		"directory": "plugin"
 	},
 	"homepage": "https://codexfi.com",

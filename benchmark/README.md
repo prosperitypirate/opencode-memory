@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Score: 94.5%](https://img.shields.io/badge/Score-94.5%25-22C55E?style=flat)](https://github.com/prosperitypirate/opencode-memory)
-[![Questions: 200](https://img.shields.io/badge/Questions-200-3178C6?style=flat)](https://github.com/prosperitypirate/opencode-memory)
+[![Score: 94.5%](https://img.shields.io/badge/Score-94.5%25-22C55E?style=flat)](https://github.com/prosperitypirate/codexfi)
+[![Questions: 200](https://img.shields.io/badge/Questions-200-3178C6?style=flat)](https://github.com/prosperitypirate/codexfi)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-Runtime-FBF0DF?style=flat&logo=bun&logoColor=black)](https://bun.sh/)
 [![Claude Sonnet](https://img.shields.io/badge/Claude-Sonnet_4.6-D97706?style=flat)](https://anthropic.com)
@@ -13,7 +13,7 @@
 
 </div>
 
-A coding-assistant memory benchmark for [opencode-memory](../README.md). Evaluates recall quality across 8 developer-specific categories using a 5-phase LLM-as-judge pipeline with retrieval quality metrics.
+A coding-assistant memory benchmark for [codexfi](../README.md). Evaluates recall quality across 8 developer-specific categories using a 5-phase LLM-as-judge pipeline with retrieval quality metrics.
 
 Unlike general benchmarks (LongMemEval, LoCoMo), this dataset is designed around **coding assistant interactions**: architecture decisions, error fixes, tech stack, session continuity across days, and knowledge updates as a project evolves.
 

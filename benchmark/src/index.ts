@@ -75,7 +75,7 @@ import {
   isPhaseComplete,
   reportPath,
 } from "./utils/checkpoint.js";
-import { OpencodeMemoryProvider } from "./providers/opencode-memory.js";
+import { OpencodeMemoryProvider } from "./providers/codexfi.js";
 import { runIngest }   from "./pipeline/ingest.js";
 import { runSearch }   from "./pipeline/search.js";
 import { runAnswer }   from "./pipeline/answer.js";
@@ -119,11 +119,11 @@ async function cmdRun(args: string[]): Promise<void> {
   console.log(`\n  DevMemBench — Coding Assistant Memory Benchmark`);
   console.log(`  ${"─".repeat(48)}`);
   console.log(`  Run ID  : ${runId}`);
-  console.log(`  Provider: opencode-memory`);
+  console.log(`  Provider: codexfi`);
   console.log(`  Judge   : ${config.judgeModel}`);
   console.log(`  Sessions: ${sessions.length}   Questions: ${questions.length}\n`);
 
-  emit({ type: "run_start", runId, provider: "opencode-memory", judgeModel: config.judgeModel, sessions: sessions.length, questions: questions.length });
+  emit({ type: "run_start", runId, provider: "codexfi", judgeModel: config.judgeModel, sessions: sessions.length, questions: questions.length });
 
   // Load or create checkpoint
   let cp = loadCheckpoint(runId);
@@ -133,7 +133,7 @@ async function cmdRun(args: string[]): Promise<void> {
     cp = {
       runId,
       runTag: `bench_devmem_${runId}`,
-      provider: "opencode-memory",
+      provider: "codexfi",
       judgeModel: config.judgeModel,
       answeringModel: config.answeringModel,
       startedAt: new Date().toISOString(),

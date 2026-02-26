@@ -1,8 +1,8 @@
 {
-  "name": "opencode-memory-testing",
+  "name": "codexfi-testing",
   "version": "0.1.0",
   "private": true,
-  "description": "Tests for the opencode-memory plugin — unit, integration, and E2E",
+  "description": "Tests for the codexfi plugin — unit, integration, and E2E",
   "scripts": {
     "test": "bun test src/unit/ src/integration/",
     "test:unit": "bun test src/unit/",

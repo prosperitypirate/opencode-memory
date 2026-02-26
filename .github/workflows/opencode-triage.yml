@@ -50,9 +50,9 @@ jobs:
           model: anthropic/claude-sonnet-4-6
           share: false
           prompt: |
-            Triage this GitHub issue for the opencode-memory project — a self-hosted
-            AI coding assistant memory system (LanceDB + Voyage AI embeddings,
-            TypeScript plugin, Python/FastAPI backend, React frontend).
+            Triage this GitHub issue for the codexfi project — a persistent memory
+            plugin for OpenCode (embedded LanceDB + Voyage AI embeddings,
+            TypeScript plugin with CLI and web dashboard).
 
             Steps:
             1. Read the issue title and body carefully.

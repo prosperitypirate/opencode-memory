@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * runner.ts — main entry point for the opencode-memory e2e test suite
+ * runner.ts — main entry point for the codexfi e2e test suite
  *
  * Usage:
  *   bun run src/runner.ts             — run all scenarios
@@ -51,7 +51,7 @@ const ALL_SCENARIOS: Array<{ id: string; fn: () => Promise<ScenarioResult> }> = 
 
 async function main() {
   console.log();
-  console.log(`${BOLD}${CYAN}opencode-memory E2E Test Suite${RESET}`);
+  console.log(`${BOLD}${CYAN}codexfi E2E Test Suite${RESET}`);
   console.log(`${DIM}Running automated memory system tests against a live opencode agent${RESET}`);
   console.log();
 

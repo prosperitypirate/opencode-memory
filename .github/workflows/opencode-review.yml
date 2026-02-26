@@ -39,14 +39,12 @@ jobs:
           model: anthropic/claude-haiku-4-5
           share: false
           prompt: |
-            Review this pull request for the opencode-memory project (a self-hosted
-            AI coding assistant memory system using LanceDB + Voyage AI embeddings).
+            Review this pull request for the codexfi project (a persistent memory
+            plugin for OpenCode using embedded LanceDB + Voyage AI embeddings).
 
             Check for:
             - Correctness and logic bugs
             - TypeScript type safety (plugin/ uses @opencode-ai/plugin SDK)
-            - Python async/await correctness and FastAPI patterns (backend/)
-            - React/TypeScript component issues (frontend/)
             - Memory system correctness: embedding storage, retrieval thresholds,
               memory type taxonomy, session-summary aging rules
             - Security issues (secrets, injection, auth)

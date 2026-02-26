@@ -1,6 +1,6 @@
-# opencode-memory E2E Test Suite
+# codexfi E2E Test Suite
 
-Fully autonomous end-to-end tests for the `opencode-memory` plugin. The agent (not a human) creates isolated project directories, spawns `opencode run` sessions, talks to the agent, inspects the memory backend, and reports pass/fail — zero user interaction required.
+Fully autonomous end-to-end tests for the `codexfi` plugin. The agent (not a human) creates isolated project directories, spawns `opencode run` sessions, talks to the agent, inspects the memory backend, and reports pass/fail — zero user interaction required.
 
 > **Note:** As of the plugin embedded rewrite, the test harness uses the embedded LanceDB store
 > directly (via `plugin/src/store.ts` and `plugin/src/db.ts`) instead of making HTTP calls
@@ -8,7 +8,7 @@ Fully autonomous end-to-end tests for the `opencode-memory` plugin. The agent (n
 
 ## Prerequisites
 
-**1. Plugin-v2 built**
+**1. Plugin built**
 ```bash
 cd plugin && bun run build
 ```
@@ -22,7 +22,7 @@ bun install -g opencode-ai
 **3. Plugin configured in `~/.config/opencode/opencode.json`**
 ```json
 {
-  "plugin": ["file:///path/to/opencode-memory/plugin/dist/index.js"]
+  "plugin": ["file:///path/to/codexfi/plugin/dist/index.js"]
 }
 ```
 

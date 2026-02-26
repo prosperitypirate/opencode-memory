@@ -4,7 +4,7 @@
 
 **Persistent memory for AI coding agents.** Starts as an [OpenCode](https://opencode.ai) plugin.
 
-The agent learns from every session automatically — no commands, no manual saves, no cloud, no Docker.
+The agent learns from every session automatically — no commands, no manual saves, no cloud.
 
 <br/>
 
@@ -109,7 +109,7 @@ src/
 ├── retry.ts              — exponential backoff with jitter
 ├── telemetry.ts          — CostLedger + ActivityLog
 ├── names.ts              — name registry JSON persistence
-├── plugin-config.ts      — user-facing config from ~/.config/opencode/memory.jsonc
+├── plugin-config.ts      — user-facing config from ~/.config/opencode/codexfi.jsonc
 └── services/
     ├── auto-save.ts      — background extraction after assistant turns
     ├── compaction.ts     — context window compaction with memory injection
@@ -250,7 +250,7 @@ E2E: 11/12 scenarios pass. See [benchmark/README.md](../benchmark/README.md) for
 
 ## Configuration
 
-Optional config at `~/.config/opencode/memory.jsonc`:
+Optional config at `~/.config/opencode/codexfi.jsonc`:
 
 ```jsonc
 {
@@ -302,6 +302,70 @@ tail -f ~/.codexfi.log
 | `zod` | Runtime validation for memory record schemas |
 | `@opencode-ai/plugin` | OpenCode plugin SDK types |
 | `@opencode-ai/sdk` | OpenCode SDK for client interactions |
+
+---
+
+## Agent Instructions (AGENTS.md)
+
+The plugin works without this, but adding instructions to `~/.config/opencode/AGENTS.md` improves agent behavior — it understands the `[MEMORY]` block, uses the `memory` tool correctly, and never announces memory operations.
+
+<details>
+<summary>Recommended AGENTS.md snippet</summary>
+
+````markdown
+# Memory System
+
+You have a **persistent, self-hosted memory system** that works automatically in the background. It uses LanceDB + Voyage AI embeddings, running locally.
+
+## How it works (fully automatic — no user action needed)
+
+**On every LLM call**, a `[MEMORY]` block is rebuilt and injected into the system prompt. It contains:
+- **Project Brief** — what the project is, its purpose
+- **Architecture** — system design, component structure
+- **Tech Context** — stack, tools, languages, dependencies
+- **Product Context** — features, goals, product decisions
+- **Progress & Status** — current state, what's done, what's next
+- **Last Session** — summary of the previous conversation
+- **User Preferences** — personal cross-project preferences
+- **Relevant to Current Task** — semantically matched memories
+
+**After every assistant turn**, the plugin extracts atomic typed facts from the last 8 messages and stores them.
+
+**Per-turn semantic refresh**: The "Relevant to Current Task" section is re-searched against the current user message on every turn.
+
+**Compaction survival**: Memory lives in the system prompt, which is never compacted.
+
+**Privacy**: Content wrapped in `<private>...</private>` tags is stripped before extraction.
+
+## Your role
+
+- **Read and use the `[MEMORY]` block** — treat it as ground truth for the current project state.
+- **Never ask the user** to "save", "load", or manage memory — it is fully automatic.
+- **Never announce** that you are saving or loading memory.
+- **When the user explicitly asks you to remember something**, use the `memory` tool with `mode: "add"` immediately.
+
+## Memory tool
+
+Use it when:
+- The user explicitly asks you to remember something
+- You discover something important mid-session (key decision, tricky bug fix, strong preference)
+- You need context not in the `[MEMORY]` block — search proactively on task switches
+
+**Scopes:** `project` (default) or `user` (cross-project preferences)
+
+**Types:** `project-brief`, `architecture`, `tech-context`, `product-context`, `progress`, `project-config`, `error-solution`, `preference`, `learned-pattern`
+
+**Examples:**
+```
+memory({ mode: "add", content: "Auth uses JWT in httpOnly cookies", scope: "project", type: "architecture" })
+memory({ mode: "search", query: "how is authentication handled" })
+memory({ mode: "list", scope: "project", limit: 10 })
+```
+````
+
+</details>
+
+> **Already have an `AGENTS.md`?** Append the Memory System section rather than replacing it.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * Provider adapter for the opencode-memory embedded store (plugin).
+ * Provider adapter for the codexfi embedded store (plugin).
  *
  * Replaces the HTTP-based adapter that called the Docker backend at localhost:8020.
  * Now uses the embedded LanceDB store directly via plugin/src/store.ts.
@@ -46,7 +46,7 @@ const SYNTHESIS_TYPES = [
 const ENUMERATION_REGEX = /\b(list\s+all|list\s+every|all\s+the\s+\w+|every\s+(env|config|setting|preference|error|pattern|tool|developer|tech|project|decision|approach)|across\s+all(\s+sessions)?|complete\s+(list|history|tech\s+stack|stack)|entire\s+(history|list|project\s+history|tech\s+stack)|describe\s+all|enumerate\s+all|full\s+(list|history|tech\s+stack))\b/i;
 
 export class OpencodeMemoryProvider implements Provider {
-	readonly name = "opencode-memory";
+	readonly name = "codexfi";
 
 	async initialize(): Promise<void> {
 		try {

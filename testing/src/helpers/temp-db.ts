@@ -2,7 +2,7 @@
  * Temporary LanceDB database helper for isolated test runs.
  *
  * Creates a fresh LanceDB instance in a temp directory for each test suite,
- * ensuring tests never touch the real ~/.opencode-memory/ database.
+ * ensuring tests never touch the real ~/.codexfi/ database.
  * Cleans up on teardown.
  */
 
