@@ -107,7 +107,7 @@ async function main() {
     if (result.testDirs && result.testDirs.length > 0) {
       const { shutdownServer } = await import("./opencode.js");
       const { cleanupTestDirs } = await import("./memory-api.js");
-      const { refresh: refreshTable } = await import("../../plugin-v2/src/db.js");
+      const { refresh: refreshTable } = await import("../../../plugin-v2/src/db.js");
       // Shut down any cached servers for this scenario's directories
       for (const dir of result.testDirs) {
         await shutdownServer(dir);

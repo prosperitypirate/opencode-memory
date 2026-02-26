@@ -11,9 +11,9 @@
 
 import { createHash } from "crypto";
 import { execSync } from "child_process";
-import * as db from "../../plugin-v2/src/db.js";
-import { refresh as refreshTable } from "../../plugin-v2/src/db.js";
-import * as store from "../../plugin-v2/src/store.js";
+import * as db from "../../../plugin-v2/src/db.js";
+import { refresh as refreshTable } from "../../../plugin-v2/src/db.js";
+import * as store from "../../../plugin-v2/src/store.js";
 
 const PREFIX = "opencode";
 
