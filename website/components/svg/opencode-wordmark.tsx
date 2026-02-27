@@ -12,15 +12,15 @@ export function OpenCodeWordmark(props: SVGProps<SVGSVGElement>) {
       {...props}
     >
       <g clipPath="url(#opencode-wordmark-clip)">
-        {/* Inner squares — light grey in light mode, dark in dark mode */}
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M18 30H6V18H18V30Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M48 30H36V18H48V30Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M84 24V30H66V24H84Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M108 36H96V18H108V36Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M144 30H126V18H144V30Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M168 30H156V18H168V30Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M198 30H186V18H198V30Z" />
-        <path className="fill-neutral-400 dark:fill-[#4B4646]" d="M234 24V30H216V24H234Z" />
+        {/* Inner squares — very light grey in light mode, dark in dark mode */}
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M18 30H6V18H18V30Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M48 30H36V18H48V30Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M84 24V30H66V24H84Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M108 36H96V18H108V36Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M144 30H126V18H144V30Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M168 30H156V18H168V30Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M198 30H186V18H198V30Z" />
+        <path className="fill-neutral-200 dark:fill-[#4B4646]" d="M234 24V30H216V24H234Z" />
 
         {/* Outer letter shapes — light in dark mode, dark in light mode */}
         <path
