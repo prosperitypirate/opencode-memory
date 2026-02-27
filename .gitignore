@@ -5,6 +5,11 @@ node_modules/
 dist/
 .next/
 
+# Website (Fumadocs generated)
+website/.next/
+website/node_modules/
+website/.source/
+
 # Environment / secrets
 .env
 .env.local
