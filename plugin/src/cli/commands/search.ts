@@ -70,12 +70,12 @@ export async function run(args: ParsedArgs): Promise<void> {
 	for (let i = 0; i < results.length; i++) {
 		const r = results[i];
 		const pct = Math.round(r.score * 100);
-		const type = (r.metadata?.type as string) ?? "—";
-		const date = r.date ?? "—";
+		const type = (r.metadata?.type as string) ?? "-";
+		const date = r.date ?? "-";
 
 		// Score bar: visual similarity indicator
 		const barLen = Math.round(pct / 5); // 0-20 chars for 0-100%
-		const bar = "█".repeat(barLen) + "░".repeat(20 - barLen);
+		const bar = "#".repeat(barLen) + ".".repeat(20 - barLen);
 		const scoreColor = pct >= 70 ? fmt.green : pct >= 50 ? fmt.yellow : fmt.dim;
 
 		console.log(`  ${fmt.bold(`${i + 1}.`)} ${scoreColor(`${pct}%`)} ${fmt.dim(bar)} ${fmt.dim(type)} ${fmt.dim(date)}`);

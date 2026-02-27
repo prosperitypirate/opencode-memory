@@ -66,10 +66,10 @@ description: Initialize structured project memory across all categories
 # Initializing Project Memory
 
 You are populating persistent memory for this project. This creates the structured knowledge base
-that will be injected at the start of every future session — making you immediately effective
+that will be injected at the start of every future session - making you immediately effective
 without re-exploration.
 
-## Step 1 — Check what exists
+## Step 1 - Check what exists
 
 \`\`\`
 memory(mode: "list", scope: "project")
@@ -77,54 +77,54 @@ memory(mode: "list", scope: "project")
 
 If memories already exist, review them and only fill gaps. Don't duplicate.
 
-## Step 2 — Detect project type
+## Step 2 - Detect project type
 
 Check whether this is an existing codebase or a blank project:
-- If files/code exist → proceed to Step 3 (explore and extract)
-- If directory is empty → proceed to Step 4 (ask founding questions)
+- If files/code exist -> proceed to Step 3 (explore and extract)
+- If directory is empty -> proceed to Step 4 (ask founding questions)
 
 ---
 
-## Step 3 — Existing codebase: explore and extract
+## Step 3 - Existing codebase: explore and extract
 
-Take 30–50 tool calls to genuinely understand the project. Read:
+Take 30-50 tool calls to genuinely understand the project. Read:
 
 - README.md, CONTRIBUTING.md, AGENTS.md, CLAUDE.md
 - Package manifests: package.json, Cargo.toml, pyproject.toml, go.mod
 - Config files: tsconfig.json, .eslintrc, docker-compose.yml, CI/CD configs
 - Key source entry points (main, index, app)
-- \`git log --oneline -30\` — Recent history and commit style
-- \`git shortlog -sn --all | head -10\` — Main contributors
+- \`git log --oneline -30\` - Recent history and commit style
+- \`git shortlog -sn --all | head -10\` - Main contributors
 
-Then save one memory per category below. Be specific and concrete — vague memories are useless.
+Then save one memory per category below. Be specific and concrete - vague memories are useless.
 
 ### Category memories to create:
 
-**project-brief** — What this project is
+**project-brief** - What this project is
 \`\`\`
 memory(mode:"add", scope:"project", type:"project-brief",
   content:"[Project name]: [1-2 sentence description]. Core goals: [list]. Main users: [who].")
 \`\`\`
 
-**architecture** — How it's built
+**architecture** - How it's built
 \`\`\`
 memory(mode:"add", scope:"project", type:"architecture",
   content:"[Key architectural decisions, patterns in use, component structure, critical paths].")
 \`\`\`
 
-**tech-context** — Tech stack and setup
+**tech-context** - Tech stack and setup
 \`\`\`
 memory(mode:"add", scope:"project", type:"tech-context",
   content:"Stack: [languages/frameworks]. Build: [command]. Run: [command]. Test: [command]. Key deps: [list].")
 \`\`\`
 
-**product-context** — Why it exists
+**product-context** - Why it exists
 \`\`\`
 memory(mode:"add", scope:"project", type:"product-context",
   content:"[Problem being solved]. [Target users]. [Key UX goals or product constraints].")
 \`\`\`
 
-**progress** — Current state
+**progress** - Current state
 \`\`\`
 memory(mode:"add", scope:"project", type:"progress",
   content:"Status: [working/in-progress/early]. What works: [list]. In progress: [list]. Known issues: [list].")
@@ -132,7 +132,7 @@ memory(mode:"add", scope:"project", type:"progress",
 
 ---
 
-## Step 4 — Blank project: ask founding questions
+## Step 4 - Blank project: ask founding questions
 
 If the directory is empty or has no meaningful code, ask the user all at once:
 
@@ -149,11 +149,11 @@ memory(mode:"add", scope:"project", type:"product-context", content:"...")
 memory(mode:"add", scope:"project", type:"tech-context", content:"...")
 \`\`\`
 
-Leave architecture and progress empty — they'll populate automatically as work begins.
+Leave architecture and progress empty - they'll populate automatically as work begins.
 
 ---
 
-## Step 5 — User preferences (optional)
+## Step 5 - User preferences (optional)
 
 If the user hasn't been asked before, ask:
 - Any communication style preferences? (terse vs. detailed, emoji vs. plain, etc.)
@@ -163,7 +163,7 @@ Save as: \`memory(mode:"add", scope:"user", type:"preference", content:"...")\`
 
 ---
 
-## Step 6 — Confirm
+## Step 6 - Confirm
 
 After saving, run \`memory(mode:"list", scope:"project")\` and show the user a brief
 summary of what was stored across each category.
@@ -331,7 +331,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 		const source = voyageFromFlag ? "flag" : voyageFromEnv ? "env" : "config";
 		fmt.success(`VOYAGE_API_KEY ${fmt.dim(`set (${maskKey(voyageKey)}) [${source}]`)}`);
 	} else {
-		fmt.warn(`VOYAGE_API_KEY ${fmt.dim("not set — required for embeddings")}`);
+		fmt.warn(`VOYAGE_API_KEY ${fmt.dim("not set - required for embeddings")}`);
 		fmt.blank();
 		fmt.info("Get your Voyage AI key at: " + fmt.cyan("https://dash.voyageai.com/api-keys"));
 		fmt.blank();
@@ -339,7 +339,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 		if (voyageKey) {
 			fmt.success(`VOYAGE_API_KEY ${fmt.dim(`saved (${maskKey(voyageKey)})`)}`);
 		} else {
-			fmt.warn("Skipped — plugin will be disabled until VOYAGE_API_KEY is set.");
+			fmt.warn("Skipped - plugin will be disabled until VOYAGE_API_KEY is set.");
 		}
 	}
 	if (voyageKey) keys.voyageApiKey = voyageKey;
@@ -400,7 +400,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 	fmt.blank();
 
 	if (extractionKeysCollected === 0) {
-		fmt.error("No extraction API key configured — at least one of Anthropic, xAI, or Google is required.");
+		fmt.error("No extraction API key configured - at least one of Anthropic, xAI, or Google is required.");
 		fmt.info("Re-run `codexfi install` and provide at least one key.");
 		process.exit(1);
 	}
@@ -420,7 +420,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 	fmt.header("Install");
 
 	// ── Step 1: Register in OpenCode config ─────────────────────────────────────
-	console.log(fmt.bold("  Step 1") + fmt.dim(" — Register plugin with OpenCode"));
+	console.log(fmt.bold("  Step 1") + fmt.dim(" - Register plugin with OpenCode"));
 	fmt.blank();
 
 	const existingConfig = findOpencodeConfig();
@@ -437,13 +437,13 @@ export async function run(args: ParsedArgs): Promise<void> {
 	fmt.blank();
 
 	// ── Step 2: Create slash commands ───────────────────────────────────────────
-	console.log(fmt.bold("  Step 2") + fmt.dim(" — Create slash commands"));
+	console.log(fmt.bold("  Step 2") + fmt.dim(" - Create slash commands"));
 	fmt.blank();
 	createSlashCommands();
 
 	// ── Step 3: Configure API keys ──────────────────────────────────────────────
 	fmt.blank();
-	console.log(fmt.bold("  Step 3") + fmt.dim(" — Configure API keys"));
+	console.log(fmt.bold("  Step 3") + fmt.dim(" - Configure API keys"));
 	fmt.blank();
 
 	const keys = await resolveApiKeys(args);
@@ -471,7 +471,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 	if (hasVoyage && hasExtraction) {
 		fmt.success(fmt.greenBold("Setup complete!"));
 	} else {
-		fmt.warn(fmt.yellow("Setup complete with warnings — see above."));
+		fmt.warn(fmt.yellow("Setup complete with warnings - see above."));
 	}
 
 	fmt.blank();

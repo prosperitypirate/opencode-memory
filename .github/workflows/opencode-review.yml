@@ -21,10 +21,10 @@ jobs:
     if: github.event.pull_request.draft == false
 
     permissions:
-      id-token: write      # Required for OpenCode GitHub App token exchange
-      contents: read       # Checkout
-      pull-requests: write  # Post review comments on PRs
-      issues: read         # gh CLI can read issue context for /oc commands
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: write
 
     steps:
       - uses: actions/checkout@v6
@@ -37,6 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: anthropic/claude-haiku-4-5
+          use_github_token: true
           share: false
           prompt: |
             Review this pull request for the codexfi project (a persistent memory

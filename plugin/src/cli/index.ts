@@ -96,7 +96,7 @@ const COMMANDS: Record<string, {
 		load: () => import("./commands/stats.js"),
 	},
 	status: {
-		description: "Health check — verify DB, API keys, plugin registration",
+		description: "Health check - verify DB, API keys, plugin registration",
 		usage: "codexfi status [--json]",
 		load: () => import("./commands/status.js"),
 	},
@@ -159,7 +159,7 @@ function printCommandHelp(name: string): void {
 
 	fmt.banner(VERSION);
 	fmt.blank();
-	console.log(`  ${fmt.cyanBold(name)} — ${cmd.description}`);
+	console.log(`  ${fmt.cyanBold(name)} - ${cmd.description}`);
 	fmt.blank();
 	console.log(`  ${fmt.bold("Usage:")} ${fmt.dim(cmd.usage)}`);
 	fmt.blank();
