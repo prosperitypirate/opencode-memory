@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/prosperitypirate/codexfi/compare/v0.4.3...v0.4.4) (2026-02-27)
+
+
+### Bug Fixes
+
+* **plugin:** use ASCII-only output to fix unicode corruption in bun global install ([16d6a4b](https://github.com/prosperitypirate/codexfi/commit/16d6a4b815b47eefd4db41722967880f17177ff2)), closes [#81](https://github.com/prosperitypirate/codexfi/issues/81)
+
 ## [0.4.3](https://github.com/prosperitypirate/codexfi/compare/v0.4.2...v0.4.3) (2026-02-27)
 
 
