@@ -83,9 +83,9 @@ export async function run(args: ParsedArgs): Promise<void> {
 	const total = checks.length;
 
 	if (hasFailure) {
-		console.log(`  ${fmt.redBold(`${okCount}/${total} checks passed`)} — fix errors above to proceed.`);
+		console.log(`  ${fmt.redBold(`${okCount}/${total} checks passed`)} - fix errors above to proceed.`);
 	} else {
-		console.log(`  ${fmt.greenBold(`${okCount}/${total} checks passed`)} — system healthy.`);
+		console.log(`  ${fmt.greenBold(`${okCount}/${total} checks passed`)} - system healthy.`);
 	}
 	fmt.blank();
 }
@@ -101,7 +101,7 @@ function checkDataDir(): CheckResult {
 		accessSync(DATA_DIR, constants.R_OK | constants.W_OK);
 		return { name, status: "ok", detail: DATA_DIR };
 	} catch {
-		return { name, status: "fail", detail: `${DATA_DIR} — not readable/writable` };
+		return { name, status: "fail", detail: `${DATA_DIR} - not readable/writable` };
 	}
 }
 
@@ -128,7 +128,7 @@ function checkVoyageKey(): CheckResult {
 	if (VOYAGE_API_KEY) {
 		return { name, status: "ok", detail: `set (${VOYAGE_API_KEY.slice(0, 6)}...)` };
 	}
-	return { name, status: "fail", detail: "VOYAGE_API_KEY not set — required for embeddings" };
+	return { name, status: "fail", detail: "VOYAGE_API_KEY not set - required for embeddings" };
 }
 
 function checkExtractionKey(): CheckResult {
@@ -152,7 +152,7 @@ function checkExtractionKey(): CheckResult {
 		return {
 			name,
 			status: "warn",
-			detail: `EXTRACTION_PROVIDER=${provider} but key missing — ${anyKey[0]} key is available`,
+			detail: `EXTRACTION_PROVIDER=${provider} but key missing - ${anyKey[0]} key is available`,
 		};
 	}
 
@@ -184,10 +184,10 @@ function checkPluginRegistered(): CheckResult {
 				return { name, status: "ok", detail: `registered in ${filename}` };
 			}
 
-			return { name, status: "warn", detail: `${filename} exists but plugin not registered — run 'install'` };
+			return { name, status: "warn", detail: `${filename} exists but plugin not registered - run 'install'` };
 		}
 
-		return { name, status: "warn", detail: "no OpenCode config found — run 'install'" };
+		return { name, status: "warn", detail: "no OpenCode config found - run 'install'" };
 	} catch {
 		return { name, status: "warn", detail: "unable to read OpenCode config" };
 	}

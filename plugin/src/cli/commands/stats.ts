@@ -123,7 +123,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 			.sort((a, b) => b[1] - a[1])
 			.map(([type, count]) => {
 				const pct = ((count / active.length) * 100).toFixed(0);
-				const bar = "█".repeat(Math.round(count / active.length * 20));
+				const bar = "#".repeat(Math.round(count / active.length * 20));
 				return [type, String(count), `${pct}%`, bar];
 			});
 
@@ -142,7 +142,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 	if (costs.total_cost_usd > 0) {
 		fmt.header("API Costs");
 		fmt.kv("Total", `$${costs.total_cost_usd.toFixed(4)}`);
-		fmt.kv("Last updated", costs.last_updated ? costs.last_updated.slice(0, 19) : "—");
+		fmt.kv("Last updated", costs.last_updated ? costs.last_updated.slice(0, 19) : "-");
 		fmt.blank();
 
 		const costRows: string[][] = [];

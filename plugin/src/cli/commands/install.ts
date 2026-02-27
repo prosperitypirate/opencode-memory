@@ -331,7 +331,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 		const source = voyageFromFlag ? "flag" : voyageFromEnv ? "env" : "config";
 		fmt.success(`VOYAGE_API_KEY ${fmt.dim(`set (${maskKey(voyageKey)}) [${source}]`)}`);
 	} else {
-		fmt.warn(`VOYAGE_API_KEY ${fmt.dim("not set — required for embeddings")}`);
+		fmt.warn(`VOYAGE_API_KEY ${fmt.dim("not set - required for embeddings")}`);
 		fmt.blank();
 		fmt.info("Get your Voyage AI key at: " + fmt.cyan("https://dash.voyageai.com/api-keys"));
 		fmt.blank();
@@ -339,7 +339,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 		if (voyageKey) {
 			fmt.success(`VOYAGE_API_KEY ${fmt.dim(`saved (${maskKey(voyageKey)})`)}`);
 		} else {
-			fmt.warn("Skipped — plugin will be disabled until VOYAGE_API_KEY is set.");
+			fmt.warn("Skipped - plugin will be disabled until VOYAGE_API_KEY is set.");
 		}
 	}
 	if (voyageKey) keys.voyageApiKey = voyageKey;
@@ -400,7 +400,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 	fmt.blank();
 
 	if (extractionKeysCollected === 0) {
-		fmt.error("No extraction API key configured — at least one of Anthropic, xAI, or Google is required.");
+		fmt.error("No extraction API key configured - at least one of Anthropic, xAI, or Google is required.");
 		fmt.info("Re-run `codexfi install` and provide at least one key.");
 		process.exit(1);
 	}
@@ -420,7 +420,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 	fmt.header("Install");
 
 	// ── Step 1: Register in OpenCode config ─────────────────────────────────────
-	console.log(fmt.bold("  Step 1") + fmt.dim(" — Register plugin with OpenCode"));
+	console.log(fmt.bold("  Step 1") + fmt.dim(" - Register plugin with OpenCode"));
 	fmt.blank();
 
 	const existingConfig = findOpencodeConfig();
@@ -437,13 +437,13 @@ export async function run(args: ParsedArgs): Promise<void> {
 	fmt.blank();
 
 	// ── Step 2: Create slash commands ───────────────────────────────────────────
-	console.log(fmt.bold("  Step 2") + fmt.dim(" — Create slash commands"));
+	console.log(fmt.bold("  Step 2") + fmt.dim(" - Create slash commands"));
 	fmt.blank();
 	createSlashCommands();
 
 	// ── Step 3: Configure API keys ──────────────────────────────────────────────
 	fmt.blank();
-	console.log(fmt.bold("  Step 3") + fmt.dim(" — Configure API keys"));
+	console.log(fmt.bold("  Step 3") + fmt.dim(" - Configure API keys"));
 	fmt.blank();
 
 	const keys = await resolveApiKeys(args);
@@ -471,7 +471,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 	if (hasVoyage && hasExtraction) {
 		fmt.success(fmt.greenBold("Setup complete!"));
 	} else {
-		fmt.warn(fmt.yellow("Setup complete with warnings — see above."));
+		fmt.warn(fmt.yellow("Setup complete with warnings - see above."));
 	}
 
 	fmt.blank();

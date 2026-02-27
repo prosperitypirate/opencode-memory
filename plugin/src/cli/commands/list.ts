@@ -83,7 +83,7 @@ export async function run(args: ParsedArgs): Promise<void> {
 		const meta = "metadata" in m
 			? (m.metadata as Record<string, unknown>)
 			: {};
-		const type = (meta.type as string) ?? (m as Record<string, unknown>).type as string ?? "—";
+		const type = (meta.type as string) ?? (m as Record<string, unknown>).type as string ?? "-";
 		const id = ("id" in m ? m.id as string : "").slice(0, 8);
 		const memory = ("memory" in m ? m.memory as string : "").slice(0, 80);
 		const date = formatDate("updated_at" in m
@@ -115,10 +115,10 @@ export async function run(args: ParsedArgs): Promise<void> {
  * Format an ISO date string as a short relative or absolute date.
  */
 function formatDate(iso: string | null): string {
-	if (!iso) return fmt.dim("—");
+	if (!iso) return fmt.dim("-");
 
 	const date = new Date(iso);
-	if (isNaN(date.getTime())) return fmt.dim("—");
+	if (isNaN(date.getTime())) return fmt.dim("-");
 
 	const now = new Date();
 	const diffMs = now.getTime() - date.getTime();

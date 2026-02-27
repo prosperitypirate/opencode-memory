@@ -3,6 +3,9 @@
  *
  * Zero dependencies. Uses ANSI escape sequences directly.
  * Respects NO_COLOR (https://no-color.org/) and dumb terminals.
+ *
+ * ASCII-only output: avoids Unicode string literals entirely to prevent
+ * double-encoding corruption in Bun global installs (bun/issues/10851).
  */
 
 // ── Color support detection ─────────────────────────────────────────────────────
@@ -11,38 +14,6 @@ const supportsColor =
 	!process.env.NO_COLOR &&
 	process.env.TERM !== "dumb" &&
 	(process.stdout.isTTY ?? false);
-
-// ── Unicode support detection ───────────────────────────────────────────────────
-//
-// Color support (isTTY) and UTF-8 encoding capability are independent.
-// A terminal can be a TTY with ANSI colors but decode bytes as Latin-1,
-// rendering multi-byte UTF-8 sequences as garbage (e.g. ✓ → â, • → â¢).
-//
-// We check two signals:
-//   1. Locale env vars — LANG / LC_ALL / LC_CTYPE containing "UTF-8" or "utf8"
-//   2. Known terminal programs that always use UTF-8 regardless of locale
-//      (iTerm2, macOS Terminal.app, VSCode integrated terminal, Windows Terminal)
-//
-// If neither confirms UTF-8, we fall back to plain ASCII symbols.
-
-function detectUnicode(): boolean {
-	// Known-good terminal programs that always handle UTF-8
-	const termProgram = process.env.TERM_PROGRAM ?? "";
-	if (["iTerm.app", "Apple_Terminal", "vscode", "WindowsTerminal"].includes(termProgram)) {
-		return true;
-	}
-
-	// Locale env vars
-	const locale = process.env.LC_ALL ?? process.env.LC_CTYPE ?? process.env.LANG ?? "";
-	if (/utf-?8/i.test(locale)) return true;
-
-	// WT_SESSION is set by Windows Terminal
-	if (process.env.WT_SESSION) return true;
-
-	return false;
-}
-
-const supportsUnicode = detectUnicode();
 
 // ── ANSI escape helpers ─────────────────────────────────────────────────────────
 
@@ -84,17 +55,17 @@ export const redBold = (text: string): string => bold(red(text));
 /** Bold cyan — section headers. */
 export const cyanBold = (text: string): string => bold(cyan(text));
 
-// ── Unicode symbols ─────────────────────────────────────────────────────────────
+// ── ASCII symbols ───────────────────────────────────────────────────────────────
 
-/** Check/cross/warning symbols — falls back to ASCII if Unicode is not supported. */
+/** Status and layout symbols — ASCII-only to avoid Bun global install corruption. */
 export const sym = {
-	check: supportsUnicode ? "✓" : "[ok]",
-	cross: supportsUnicode ? "✗" : "[!!]",
-	warn: supportsUnicode ? "⚠" : "[!]",
-	arrow: supportsUnicode ? "→" : "->",
-	bullet: supportsUnicode ? "•" : "-",
-	bar: supportsUnicode ? "│" : "|",
-	dash: supportsUnicode ? "─" : "-",
+	check:  "[ok]",
+	cross:  "[!!]",
+	warn:   "[!]",
+	arrow:  "->",
+	bullet: "*",
+	bar:    "|",
+	dash:   "-",
 } as const;
 
 // ── Layout helpers ──────────────────────────────────────────────────────────────
@@ -226,7 +197,7 @@ function stripAnsi(str: string): string {
 function truncate(str: string, maxLen: number): string {
 	const visible = stripAnsi(str);
 	if (visible.length <= maxLen) return str;
-	const ellipsis = supportsUnicode ? "…" : "...";
+	const ellipsis = "...";
 	return str.slice(0, maxLen - ellipsis.length) + ellipsis;
 }
 
@@ -239,9 +210,7 @@ function padCell(str: string, targetLen: number, align: "left" | "right"): strin
 
 // ── Progress / spinner ──────────────────────────────────────────────────────────
 
-const SPINNER_FRAMES = supportsUnicode
-	? ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-	: ["-", "\\", "|", "/"];
+const SPINNER_FRAMES = ["-", "\\", "|", "/"];
 
 /**
  * Display a spinner with a message while an async operation runs.
@@ -285,7 +254,7 @@ export function banner(version: string): void {
 	console.log();
 	console.log(
 		cyanBold("  codexfi") + dim(` v${version}`) +
-		dim(" — persistent memory for AI coding agents")
+		dim(" -- persistent memory for AI coding agents")
 	);
 	hr(60);
 }
