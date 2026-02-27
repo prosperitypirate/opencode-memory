@@ -35,8 +35,8 @@ The core deliverable is the `plugin/` package. The `website/` directory is the d
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 22+
-- [pnpm](https://pnpm.io/) — used throughout the project (`npm` and `yarn` are not supported)
-- [Bun](https://bun.sh/) — used for plugin builds and CLI tooling
+- [Bun](https://bun.sh/) — used for `plugin/` builds and CLI tooling
+- [pnpm](https://pnpm.io/) — used for `website/` (`npm` and `yarn` are not supported)
 - [OpenCode](https://opencode.ai/) — required to run the plugin end-to-end
 - A [Voyage AI](https://www.voyageai.com/) API key (`VOYAGE_API_KEY`) for embeddings
 
@@ -44,9 +44,9 @@ The core deliverable is the `plugin/` package. The `website/` directory is the d
 
 ```bash
 cd plugin
-pnpm install
-pnpm build          # compiles plugin + CLI
-pnpm typecheck      # TypeScript strict mode check
+bun install
+bun run build       # compiles plugin + CLI
+bun run typecheck   # TypeScript strict mode check
 ```
 
 To test the plugin in a real OpenCode session, install it into an OpenCode project:
@@ -76,7 +76,7 @@ pnpm build          # production build — must produce zero warnings/errors
    - `docs/contributing-guide`
 3. **Write code** — keep changes focused. One logical change per PR.
 4. **Run checks** before opening a PR:
-   - Plugin: `pnpm typecheck && pnpm build`
+   - Plugin: `bun run typecheck && bun run build`
    - Website: `pnpm build` (zero warnings)
 5. If your change touches retrieval, memory extraction, or embeddings, run the benchmark suite and include results in the PR description.
 
