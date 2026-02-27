@@ -66,7 +66,9 @@ pnpm build          # production build — must produce zero warnings/errors
 
 ## Making Changes
 
-1. **Fork** the repository and create a branch from `main`.
+> **Note:** This repository is currently open to collaborators only. If you'd like to contribute, open an issue describing what you want to work on and a maintainer will add you as a collaborator.
+
+1. Create a branch from `main` directly on this repository (no fork needed).
 2. Branch names should follow the convention: `type/short-description`
    - `feat/my-new-feature`
    - `fix/retrieval-threshold`
@@ -80,7 +82,7 @@ pnpm build          # production build — must produce zero warnings/errors
 
 ## Submitting a Pull Request
 
-1. Open a PR against `main`.
+1. Open a PR against `main` from your branch.
 2. Use the PR template — fill in every section.
 3. Link the issue your PR resolves using `Closes #N`.
 4. Add the appropriate label(s).
