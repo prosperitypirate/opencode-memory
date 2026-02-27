@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://codexfi.com"),
   title: {
     default: "codexfi — Persistent memory for AI coding agents",
     template: "%s | codexfi",
