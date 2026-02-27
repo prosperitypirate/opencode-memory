@@ -24,7 +24,7 @@ jobs:
       id-token: write      # Required for OpenCode GitHub App token exchange
       contents: read       # Checkout
       pull-requests: write  # Post review comments on PRs
-      issues: read         # gh CLI can read issue context for /oc commands
+      issues: write        # Post comments on issues
 
     steps:
       - uses: actions/checkout@v6
@@ -34,7 +34,6 @@ jobs:
       - uses: anomalyco/opencode/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: anthropic/claude-haiku-4-5
           share: false
