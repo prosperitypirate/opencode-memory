@@ -11,6 +11,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export const CONFIG_DIR = join(homedir(), ".config", "opencode");
+// CONFIG_FILES[0] is the canonical write target for `codexfi install`.
+// Additional entries are read-only fallbacks for forward-compat (e.g. .json).
 const CONFIG_FILES = [
 	join(CONFIG_DIR, "codexfi.jsonc"),
 	join(CONFIG_DIR, "codexfi.json"),
