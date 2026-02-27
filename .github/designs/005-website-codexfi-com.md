@@ -2,11 +2,67 @@
 
 **Feature**: Build and deploy codexfi.com — landing page + documentation site  
 **Issue**: #67  
-**Branch**: `feature/website`  
-**Status**: IN PROGRESS (Phase 2 complete)  
+**Branch**: `feature/website` → merged to `main` via PR #68  
+**Status**: IN PROGRESS (Phases 1–4 complete, Phase 5 pending)  
 **Created**: February 26, 2026  
 **Updated**: February 26, 2026  
 **Estimated Duration**: ~2 weeks across 5 phases  
+
+## PHASE STATUS
+
+| Phase | Status | PR / Branch |
+|-------|--------|-------------|
+| Phase 1 — Scaffold & Configure | ✅ Complete | PR #68 |
+| Phase 2 — Landing Page | ✅ Complete | PR #68 |
+| Phase 3 — Documentation Content | ✅ Complete | PR #68 |
+| Phase 4 — SVG Hero Animation | ✅ Complete | PR #68 |
+| Phase 5 — Deploy & Launch | 🔄 Next | `feature/deploy` |
+
+## WHAT WAS BUILT (Phases 1–4)
+
+### Phase 1 — Scaffold & Configure
+- `website/` with Next.js 16, Fumadocs v16, shadcn/ui, Tailwind v4 CSS-first
+- Custom dark theme tokens (`--color-brand-*`) namespaced to avoid shadcn/ui collision
+- Fumadocs source config, root/docs/home layouts
+- `vercel.json` with `ignoreCommand` using `VERCEL_GIT_PREVIOUS_SHA` fallback
+- `pnpm` as package manager, Node 22 required
+
+### Phase 2 — Landing Page
+- Hero, Features (8 cards), How It Works, Footer components
+- Motion scroll-reveal animations, `prefers-reduced-motion` support
+- Responsive (mobile → desktop), SEO metadata, Open Graph tags
+- Install CTA: `bunx codexfi install` with copy-to-clipboard
+
+### Phase 3 — Documentation Content
+- 8 MDX pages across 4 sections (docs, how-it-works, guides, api-reference)
+- All content verified against plugin source — 11 memory types, thresholds, aging rules accurate
+- Fumadocs search wired up via `/api/search` route (Orama, built-in, no external service)
+- Sidebar ordering via `meta.json` files
+
+### Phase 4 — SVG Hero + Polish
+- Animated SVG hero: purple extraction flow (left→right), green retrieval arc (right→left)
+- CSS-only `@keyframes`, `prefers-reduced-motion` fallback, ARIA accessibility
+- Light mode support via semantic Tailwind classes
+- Favicon: `app/icon.svg` (purple diamond)
+- OG image: `app/opengraph-image.tsx` dynamic `ImageResponse`
+- Twitter card: `app/twitter-image.tsx`
+- `metadataBase: "https://codexfi.com"` in root layout
+
+## WHAT REMAINS (Phase 5)
+
+### Phase 5 — Deploy & Launch
+- [ ] Vercel project created — repo connected, Root Directory set to `website`, Node 22
+- [ ] `vercel.json` `ignoreCommand` verified working in production
+- [ ] Custom domain `codexfi.com` added in Vercel project settings
+- [ ] Cloudflare DNS: CNAME `codexfi.com` → `cname.vercel-dns.com` (DNS-only / grey cloud, or SSL mode Full if proxied)
+- [ ] `www.codexfi.com` → `codexfi.com` redirect configured
+- [ ] Production deployment live and verified
+- [ ] Lighthouse audit: Performance >90, Accessibility >95
+
+### Deferred
+- SVG hero bidirectional flow redesign (Gemini Pro unavailable at time of implementation)
+- Social proof / stats section (npm downloads, GitHub stars) — post-launch
+- Additional docs pages (compaction, semantic-search, aging, more guides) — post-launch
 
 ---
 
