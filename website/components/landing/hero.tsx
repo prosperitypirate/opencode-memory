@@ -44,7 +44,8 @@ export function Hero() {
           className="mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl"
         >
           Your AI remembers everything — architecture, decisions, patterns,
-          progress — across every session, automatically.
+          progress — across every session, automatically. No prompts. No tool
+          calls. Zero tokens spent on memory management.
         </motion.p>
 
         <motion.div variants={fadeInUp} className="mb-12">

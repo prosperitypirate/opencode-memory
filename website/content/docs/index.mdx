@@ -5,15 +5,17 @@ description: Persistent memory for AI coding agents — fully automatic, self-ho
 
 # What is codexfi?
 
-codexfi is a plugin for [OpenCode](https://opencode.ai) that gives your AI coding agent **persistent memory across sessions**. Architecture decisions, tech stack context, progress tracking, error solutions, user preferences — everything is automatically extracted from conversations, stored locally, and retrieved at the start of every new session.
+codexfi is a plugin for [OpenCode](https://opencode.ai) that gives your AI coding agent **persistent memory across sessions**. Architecture decisions, tech stack context, progress tracking, error solutions, user preferences — everything is automatically extracted from conversations, stored locally, and retrieved automatically — injected into the system prompt before every LLM call, with semantically relevant memories refreshed on every turn.
 
 The agent simply *remembers*.
+
+<DocsMemoryCycle />
 
 ## How it works
 
 After every assistant turn, codexfi analyzes the conversation and extracts key facts as typed memories. Each memory is embedded with [Voyage AI](https://www.voyageai.com/) (`voyage-code-3`) and stored in an embedded [LanceDB](https://lancedb.com/) database on your machine.
 
-At the start of every session, a `[MEMORY]` block is injected into the system prompt containing:
+Before every LLM call, a `[MEMORY]` block is injected into the system prompt containing:
 
 - **Project Brief** — what the project is and its goals
 - **Architecture** — system design and component relationships
@@ -22,21 +24,15 @@ At the start of every session, a `[MEMORY]` block is injected into the system pr
 - **Progress & Status** — current state of work
 - **Last Session** — summary of the previous conversation
 - **User Preferences** — cross-project personal preferences
-- **Relevant to Current Task** — semantically matched memories for the current topic
+- **Relevant to Current Task** — the only section updated on every single turn
 
-This block is rebuilt on every LLM call. As the conversation shifts topics, different memories surface automatically.
+<RelevantToTaskCallout />
+
+This block is rebuilt on every LLM call.
 
 ## Key features
 
-- **Fully automatic** — memories save after every assistant turn with zero user action
-- **Self-hosted** — all data stays on your machine; no cloud, no Docker, no separate server
-- **Code-optimized embeddings** — Voyage `voyage-code-3` (1024 dimensions), purpose-built for code
-- **Multi-provider extraction** — Anthropic Claude Haiku (default), xAI Grok (fastest), Google Gemini (native JSON)
-- **Typed memory system** — 11 memory types for structured knowledge organization
-- **Smart deduplication** — cosine similarity prevents storing duplicate memories
-- **Relational versioning** — contradicting memories are automatically superseded
-- **Compaction-proof** — memory lives in the system prompt, surviving context window truncation
-- **Privacy filter** — wrap content in `<private>...</private>` to exclude it from extraction
+<DocsKeyFeatures />
 
 ## Quick start
 

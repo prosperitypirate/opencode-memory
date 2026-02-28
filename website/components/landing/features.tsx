@@ -7,7 +7,7 @@ import {
   Search,
   Shield,
   Zap,
-  Link2,
+  Gauge,
   EyeOff,
   RefreshCw,
 } from "lucide-react";
@@ -44,10 +44,10 @@ const features = [
       "One command install. No Docker, no external database. Bring your own LLM + Voyage AI keys.",
   },
   {
-    icon: Link2,
-    title: "Session Continuity",
+    icon: Gauge,
+    title: "Zero Overhead",
     description:
-      "Pick up exactly where you left off — your AI knows the full project history.",
+      "Memory fires through hooks — never a tool call, never a wasted turn. Your agent's full context budget stays free for code.",
   },
   {
     icon: EyeOff,

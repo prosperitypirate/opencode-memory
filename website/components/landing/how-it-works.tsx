@@ -16,7 +16,7 @@ const steps = [
     icon: Code2,
     title: "Code",
     description:
-      "You code with your AI agent as usual. codexfi silently extracts memories in the background.",
+      "You code. After each turn, codexfi silently extracts what matters and refreshes the memory context — no prompts, no tool calls, nothing asked of you or your agent.",
     code: null,
   },
   {
