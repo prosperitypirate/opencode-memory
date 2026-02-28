@@ -53,7 +53,7 @@ export function MemoryFlowSVG() {
                 to { stroke-dashoffset: -14; }
               }
               @keyframes dashFlowRev {
-                to { stroke-dashoffset: 24; }
+                to { stroke-dashoffset: -24; }
               }
 
               .slide-node {
