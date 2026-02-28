@@ -30,10 +30,10 @@ export function DocsMemoryCycle() {
             @keyframes dashFlow-mc { to { stroke-dashoffset: -14; } }
             @keyframes dashFlowRev-mc { to { stroke-dashoffset: 18; } }
             @keyframes slideTag-mc {
-              0% { transform: translateX(110px); opacity: 0; }
+              0% { transform: translate(110px, 50px); opacity: 0; }
               10% { opacity: 1; }
               90% { opacity: 1; }
-              100% { transform: translateX(530px); opacity: 0; }
+              100% { transform: translate(530px, 50px); opacity: 0; }
             }
             @keyframes glowPulse-mc {
               0% { filter: blur(2px); opacity: 0.8; }
@@ -42,9 +42,9 @@ export function DocsMemoryCycle() {
           }
           @media (prefers-reduced-motion: reduce) {
             .flow-line-mc, .return-arc-mc, .pulse-mc, .tag-1-mc, .tag-2-mc, .tag-3-mc { animation: none !important; }
-            .tag-1-mc { transform: translateX(180px); opacity: 1; }
-            .tag-2-mc { transform: translateX(300px); opacity: 1; }
-            .tag-3-mc { transform: translateX(420px); opacity: 1; }
+            .tag-1-mc { transform: translate(180px, 50px); opacity: 1; }
+            .tag-2-mc { transform: translate(300px, 50px); opacity: 1; }
+            .tag-3-mc { transform: translate(420px, 50px); opacity: 1; }
             .return-arc-mc { stroke-dasharray: none; }
           }
         `}</style>
@@ -60,15 +60,15 @@ export function DocsMemoryCycle() {
       <line x1="470" y1="70" x2="525" y2="70" stroke="url(#grad-mc)" strokeWidth="2" className="flow-line-mc" markerEnd="url(#arrow-flow-mc)" />
 
       {/* Tags */}
-      <g className="tag-mc tag-1-mc" transform="translate(110, 50)">
+      <g className="tag-mc tag-1-mc">
         <rect x="-40" y="-10" width="80" height="16" rx="8" fill="#a855f7" />
         <text x="0" y="2" fontSize="9" fontFamily="var(--font-mono, monospace)" fill="#fff" textAnchor="middle" alignmentBaseline="middle">architecture</text>
       </g>
-      <g className="tag-mc tag-2-mc" transform="translate(110, 50)">
+      <g className="tag-mc tag-2-mc">
         <rect x="-35" y="-10" width="70" height="16" rx="8" fill="#e879f9" />
         <text x="0" y="2" fontSize="9" fontFamily="var(--font-mono, monospace)" fill="#fff" textAnchor="middle" alignmentBaseline="middle">progress</text>
       </g>
-      <g className="tag-mc tag-3-mc" transform="translate(110, 50)">
+      <g className="tag-mc tag-3-mc">
         <rect x="-40" y="-10" width="80" height="16" rx="8" fill="#c084fc" />
         <text x="0" y="2" fontSize="9" fontFamily="var(--font-mono, monospace)" fill="#fff" textAnchor="middle" alignmentBaseline="middle">tech-context</text>
       </g>
