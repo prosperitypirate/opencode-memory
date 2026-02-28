@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+MUTED='\033[0;2m'
+NC='\033[0m'
+
+echo ""
+echo -e "${CYAN}  codexfi${NC} ${MUTED}-- persistent memory for AI coding agents${NC}"
+echo -e "${MUTED}  ----------------------------------------${NC}"
+echo ""
+
+# Step 1: Ensure bun is installed
+if ! command -v bun &>/dev/null; then
+  echo -e "  ${MUTED}bun not found -- installing...${NC}"
+  curl -fsSL https://bun.sh/install | bash
+  # Pick up bun from the default install path immediately
+  export PATH="$HOME/.bun/bin:$PATH"
+  if ! command -v bun &>/dev/null; then
+    echo -e "  ${RED}bun install failed. Please install bun manually: https://bun.sh${NC}"
+    exit 1
+  fi
+  echo -e "  ${GREEN}bun installed ($(bun --version))${NC}"
+else
+  echo -e "  ${GREEN}bun found ($(bun --version))${NC}"
+fi
+
+echo ""
+
+# Step 2: Run codexfi install
+bunx codexfi install
