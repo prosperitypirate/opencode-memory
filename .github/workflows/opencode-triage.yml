@@ -43,7 +43,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: anomalyco/opencode/github@latest
+      - uses: anomalyco/opencode/github@799b2623cbb1c0f19e045d87c2c8593e83678bc0 # v1.2.15
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         with:
