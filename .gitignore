@@ -49,3 +49,4 @@ names.json
 
 # Setup script (not committed — run locally only)
 scripts/setup-github-repo.sh
+*.tsbuildinfo
