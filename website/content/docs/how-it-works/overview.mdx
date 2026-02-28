@@ -5,7 +5,7 @@ description: How codexfi captures, stores, and retrieves memories across coding 
 
 # Architecture Overview
 
-codexfi is an [OpenCode](https://opencode.ai) plugin that runs entirely in-process. There are no external services, no Docker containers, no separate servers. Everything — LLM extraction, embedding, vector storage, and retrieval — happens inside the plugin.
+codexfi is an [OpenCode](https://opencode.ai) plugin that runs entirely in-process. There are no servers to run, no Docker containers, no infrastructure to manage — just two API keys (Voyage AI for embedding, one LLM provider for extraction).
 
 ## System diagram
 
@@ -44,7 +44,7 @@ Each subsequent user message triggers a single semantic search (~300ms) that ref
 
 ### Every LLM call (system.transform)
 
-The `[MEMORY]` block is rebuilt from the cache and injected into the system prompt. This happens on every LLM call, not just the first. The block contains structured sections (Project Brief, Architecture, etc.) plus semantically matched memories.
+The `[MEMORY]` block is rebuilt from the cache and injected into the system prompt. This happens on every LLM call, not just the first. The block contains structured sections (Project Brief, Architecture, etc.) plus semantically matched memories. Because injection happens through the system prompt — not a tool call or conversation turn — it consumes no conversation context tokens.
 
 ## Data flow: storage
 

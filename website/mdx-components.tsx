@@ -12,6 +12,7 @@ import { DocsProviderSpeed } from "./components/svg/docs/docs-provider-speed";
 import { DocsInstallSteps } from "./components/svg/docs/docs-install-steps";
 import { DocsDedupCosine } from "./components/svg/docs/docs-dedup-cosine";
 import { DocsKeyFeatures } from "./components/svg/docs/docs-key-features";
+import { RelevantToTaskCallout } from "./components/docs/relevant-to-task-callout";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -27,6 +28,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     DocsInstallSteps,
     DocsDedupCosine,
     DocsKeyFeatures,
+    RelevantToTaskCallout,
     ...components,
   };
 }

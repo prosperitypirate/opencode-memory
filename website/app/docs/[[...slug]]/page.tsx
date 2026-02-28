@@ -14,6 +14,7 @@ import { DocsProviderSpeed } from "@/components/svg/docs/docs-provider-speed";
 import { DocsInstallSteps } from "@/components/svg/docs/docs-install-steps";
 import { DocsDedupCosine } from "@/components/svg/docs/docs-dedup-cosine";
 import { DocsKeyFeatures } from "@/components/svg/docs/docs-key-features";
+import { RelevantToTaskCallout } from "@/components/docs/relevant-to-task-callout";
 
 const customComponents = {
   ...defaultMdxComponents,
@@ -28,6 +29,7 @@ const customComponents = {
   DocsInstallSteps,
   DocsDedupCosine,
   DocsKeyFeatures,
+  RelevantToTaskCallout,
 };
 
 export default async function Page(props: {
