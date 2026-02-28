@@ -9,6 +9,8 @@ codexfi is a plugin for [OpenCode](https://opencode.ai) that gives your AI codin
 
 The agent simply *remembers*.
 
+<DocsMemoryCycle />
+
 ## How it works
 
 After every assistant turn, codexfi analyzes the conversation and extracts key facts as typed memories. Each memory is embedded with [Voyage AI](https://www.voyageai.com/) (`voyage-code-3`) and stored in an embedded [LanceDB](https://lancedb.com/) database on your machine.

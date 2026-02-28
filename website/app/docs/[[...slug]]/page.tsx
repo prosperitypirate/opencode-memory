@@ -3,6 +3,31 @@ import { DocsPage, DocsBody } from "fumadocs-ui/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { notFound } from "next/navigation";
 
+import { DocsMemoryCycle } from "@/components/svg/docs/docs-memory-cycle";
+import { DocsSessionFlow } from "@/components/svg/docs/docs-session-flow";
+import { DocsParallelFetch } from "@/components/svg/docs/docs-parallel-fetch";
+import { DocsCompactionSurvival } from "@/components/svg/docs/docs-compaction-survival";
+import { DocsMemoryTaxonomy } from "@/components/svg/docs/docs-memory-taxonomy";
+import { DocsAgingRules } from "@/components/svg/docs/docs-aging-rules";
+import { DocsExtractionPipeline } from "@/components/svg/docs/docs-extraction-pipeline";
+import { DocsProviderSpeed } from "@/components/svg/docs/docs-provider-speed";
+import { DocsInstallSteps } from "@/components/svg/docs/docs-install-steps";
+import { DocsDedupCosine } from "@/components/svg/docs/docs-dedup-cosine";
+
+const customComponents = {
+  ...defaultMdxComponents,
+  DocsMemoryCycle,
+  DocsSessionFlow,
+  DocsParallelFetch,
+  DocsCompactionSurvival,
+  DocsMemoryTaxonomy,
+  DocsAgingRules,
+  DocsExtractionPipeline,
+  DocsProviderSpeed,
+  DocsInstallSteps,
+  DocsDedupCosine,
+};
+
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
 }) {
@@ -14,7 +39,7 @@ export default async function Page(props: {
   return (
     <DocsPage toc={page.data.toc}>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents }} />
+        <MDX components={customComponents} />
       </DocsBody>
     </DocsPage>
   );

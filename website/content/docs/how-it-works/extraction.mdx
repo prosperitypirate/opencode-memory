@@ -7,6 +7,8 @@ description: How codexfi uses LLMs to extract structured memories from conversat
 
 After every assistant turn, codexfi runs an extraction pipeline to identify and store key facts from the conversation. This happens in the background and is invisible to the user.
 
+<DocsExtractionPipeline />
+
 ## Pipeline steps
 
 ### 1. Message snapshot
@@ -39,6 +41,8 @@ Each extracted fact is embedded into a 1024-dimension vector using Voyage AI's `
 The embedding uses `input_type: "document"` for storage and `input_type: "query"` for retrieval, which Voyage AI uses to optimize the embedding for each purpose.
 
 ### 4. Deduplication
+
+<DocsDedupCosine />
 
 Before storing, each fact is checked against existing memories using cosine similarity:
 
@@ -92,6 +96,8 @@ Used during auto-initialization when a new project is detected. Reads project fi
 ## Extraction providers
 
 codexfi supports three extraction providers. The configured primary provider is tried first, with automatic fallback through the remaining providers.
+
+<DocsProviderSpeed />
 
 ### Anthropic (default)
 
