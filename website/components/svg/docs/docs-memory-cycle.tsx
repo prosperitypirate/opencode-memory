@@ -26,9 +26,13 @@ export function DocsMemoryCycle() {
             .tag-2-mc { animation: slideTag-mc 6s linear infinite; animation-delay: 2s; }
             .tag-3-mc { animation: slideTag-mc 6s linear infinite; animation-delay: 4s; }
             .pulse-mc { animation: glowPulse-mc 2s ease-in-out infinite alternate; }
-            .return-arc-mc { animation: dashFlowRev-mc 1.5s linear infinite; stroke-dasharray: 10 8; }
+            
+            /* The path is drawn Right-to-Left. Animating to a negative offset moves dashes FORWARD along the path (Right-to-Left). */
+            .return-arc-mc { animation: dashFlowReturn-mc 1.5s linear infinite; stroke-dasharray: 10 8; }
+            
             @keyframes dashFlow-mc { to { stroke-dashoffset: -14; } }
-            @keyframes dashFlowRev-mc { to { stroke-dashoffset: 18; } }
+            @keyframes dashFlowReturn-mc { to { stroke-dashoffset: -18; } }
+            
             @keyframes slideTag-mc {
               0% { transform: translate(110px, 50px); opacity: 0; }
               10% { opacity: 1; }
@@ -50,7 +54,7 @@ export function DocsMemoryCycle() {
         `}</style>
       </defs>
       
-      {/* Return Arc (from [MEMORY] to Conversation) */}
+      {/* Return Arc (from [MEMORY] to Conversation) - path goes from x=570 down, left, and up to x=60 */}
       <path className="return-arc-mc" d="M 570,88 Q 570,140 500,140 L 140,140 Q 60,140 60,94" fill="none" stroke="#4ade80" strokeWidth="2" strokeOpacity="0.5" markerEnd="url(#arrow-return-mc)" />
       
       {/* Flow Lines */}
