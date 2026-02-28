@@ -30,11 +30,7 @@ export function DocsE2eScenarioMap() {
         </filter>
         <style>{`
           .card-esm {
-            /* Using transition instead of animation for simple fade-in to avoid transform override issues entirely,
-               or applying the animation to the opacity only, not the transform.
-               Actually, the issue is that transform: translateY(4px) overrides the inline translate(x, y). 
-               Let's drop the translation entirely and just use opacity for the fade-in, it's safer and still looks good.
-             */
+            /* opacity-only fade-in — no transform, preserves inline translate(x, y) from the SVG attribute */
           }
           
           @media (prefers-reduced-motion: no-preference) {

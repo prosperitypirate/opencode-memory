@@ -30,8 +30,8 @@ export function DocsTestTiers() {
             .panel-3 { animation: fadeIn3-tt 0.5s ease-out forwards; animation-delay: 0.4s; }
             
             .glow-pulse-tt {
-              animation: fadeIn3-tt 0.5s ease-out forwards, glowPulse-tt 3s ease-in-out infinite alternate;
-              animation-delay: 0.4s, 0.9s;
+              animation: glowPulse-tt 3s ease-in-out infinite alternate;
+              animation-delay: 0.9s;
             }
             
             .arrow-draw-tt {
