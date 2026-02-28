@@ -19,7 +19,7 @@ export function DocsBenchmarkPipeline() {
         <style>{`
           @media (prefers-reduced-motion: no-preference) {
             .node-bp {
-              animation: fadeInNode-bp 0.5s ease-out forwards;
+              animation: fadeInOpacityNode-bp 0.5s ease-out forwards;
               opacity: 0;
             }
             .flow-arrow-bp {
@@ -27,12 +27,14 @@ export function DocsBenchmarkPipeline() {
               stroke-dasharray: 6 5;
             }
             .report-glow-bp {
-              animation: glowPulse-bp 2s ease-in-out infinite alternate;
+              animation: fadeInOpacityNode-bp 0.5s ease-out forwards, glowPulse-bp 2s ease-in-out infinite alternate;
+              animation-delay: 0.6s, 1.1s;
+              opacity: 0;
             }
             
-            @keyframes fadeInNode-bp {
-              from { opacity: 0; transform: translateY(5px); }
-              to { opacity: 1; transform: translateY(0); }
+            @keyframes fadeInOpacityNode-bp {
+              from { opacity: 0; }
+              to { opacity: 1; }
             }
             @keyframes dashFlow-bp {
               to { stroke-dashoffset: -11; }
@@ -44,7 +46,7 @@ export function DocsBenchmarkPipeline() {
           }
           
           @media (prefers-reduced-motion: reduce) {
-            .node-bp { opacity: 1; }
+            .node-bp, .report-glow-bp { opacity: 1; }
             .flow-arrow-bp { stroke-dasharray: none; }
           }
         `}</style>
@@ -93,7 +95,7 @@ export function DocsBenchmarkPipeline() {
         </g>
 
         {/* Node 5: Report */}
-        <g className="node-bp report-glow-bp" style={{ animationDelay: '0.6s' }}>
+        <g className="report-glow-bp">
           <rect x="534" y="32" width="96" height="36" rx="18" className="fill-card" stroke="#4ade80" strokeWidth="2" filter="url(#glow-bp)" />
           <text x="582" y="54" fontSize="11" fill="#4ade80" textAnchor="middle" fontWeight="600">Report</text>
           <text x="582" y="81" fontSize="9" className="fill-muted-foreground" textAnchor="middle">report.json</text>
