@@ -53,7 +53,7 @@ export function DocsParallelFetch() {
       <path className="conv-line-pf" d="M 340,190 Q 380,190 380,150 T 415,110" fill="none" markerEnd="url(#arrow-pf-3)" />
 
       {/* Annotation */}
-      <text x="160" y="215" fontSize="9" fontFamily="var(--font-mono, monospace)" fontStyle="italic" fill="#a855f7" textAnchor="middle">all 4 fire simultaneously</text>
+      <text x="270" y="215" fontSize="9" fontFamily="var(--font-mono, monospace)" fontStyle="italic" fill="#a855f7" textAnchor="middle">all 4 fire simultaneously</text>
 
       {/* Left Node */}
       <rect x="10" y="92" width="110" height="36" rx="18" className="fill-muted stroke-border" strokeWidth="1.5" />
