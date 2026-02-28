@@ -1,6 +1,6 @@
 # 006 — Docs SVG Illustrations
 
-**Status**: IN PROGRESS  
+**Status**: DONE  
 **Created**: 2026-02-27  
 **Issue**: #86  
 **Branch**: `feat/docs-svg-illustrations`  
@@ -668,19 +668,19 @@ The 10s loop then repeats.
 **Goal**: All 10 animated TSX SVG files created in `website/components/svg/docs/`  
 **Duration**: 3–4 hours  
 **Dependencies**: Phase 1 complete  
-**Status**: PENDING
+**Status**: DONE
 
 **Deliverables:**
-- [ ] `website/components/svg/docs/docs-memory-cycle.tsx`
-- [ ] `website/components/svg/docs/docs-session-flow.tsx`
-- [ ] `website/components/svg/docs/docs-parallel-fetch.tsx`
-- [ ] `website/components/svg/docs/docs-compaction-survival.tsx`
-- [ ] `website/components/svg/docs/docs-memory-taxonomy.tsx`
-- [ ] `website/components/svg/docs/docs-aging-rules.tsx`
-- [ ] `website/components/svg/docs/docs-extraction-pipeline.tsx`
-- [ ] `website/components/svg/docs/docs-provider-speed.tsx`
-- [ ] `website/components/svg/docs/docs-install-steps.tsx`
-- [ ] `website/components/svg/docs/docs-dedup-cosine.tsx`
+- [x] `website/components/svg/docs/docs-memory-cycle.tsx`
+- [x] `website/components/svg/docs/docs-session-flow.tsx`
+- [x] `website/components/svg/docs/docs-parallel-fetch.tsx`
+- [x] `website/components/svg/docs/docs-compaction-survival.tsx`
+- [x] `website/components/svg/docs/docs-memory-taxonomy.tsx`
+- [x] `website/components/svg/docs/docs-aging-rules.tsx`
+- [x] `website/components/svg/docs/docs-extraction-pipeline.tsx`
+- [x] `website/components/svg/docs/docs-provider-speed.tsx`
+- [x] `website/components/svg/docs/docs-install-steps.tsx`
+- [x] `website/components/svg/docs/docs-dedup-cosine.tsx`
 
 **Success Criteria:**
 - Each file exports a named function matching the Export column above
@@ -701,15 +701,15 @@ The 10s loop then repeats.
 **Goal**: All 10 components globally registered and embedded in correct MDX positions  
 **Duration**: 30 minutes  
 **Dependencies**: Phase 2 complete  
-**Status**: PENDING
+**Status**: DONE
 
 **Deliverables:**
-- [ ] `website/mdx-components.tsx` — import all 10, add to return map
-- [ ] `website/content/docs/index.mdx` — insert `<DocsMemoryCycle />` after line 10
-- [ ] `website/content/docs/installation.mdx` — insert `<DocsInstallSteps />` after line 8
-- [ ] `website/content/docs/how-it-works/overview.mdx` — replace lines 12–32 with `<DocsSessionFlow />`; insert `<DocsParallelFetch />` after Turn 1 intro; insert `<DocsCompactionSurvival />` after compaction heading
-- [ ] `website/content/docs/how-it-works/memory-types.mdx` — insert `<DocsMemoryTaxonomy />` between H1 and first H2; insert `<DocsAgingRules />` after "## Aging rules" heading
-- [ ] `website/content/docs/how-it-works/extraction.mdx` — insert `<DocsExtractionPipeline />` between H1 and first H2; insert `<DocsDedupCosine />` inside "### 4. Deduplication"; insert `<DocsProviderSpeed />` after "## Extraction providers" intro
+- [x] `website/mdx-components.tsx` — import all 10, add to return map
+- [x] `website/content/docs/index.mdx` — insert `<DocsMemoryCycle />` after line 10
+- [x] `website/content/docs/installation.mdx` — insert `<DocsInstallSteps />` after line 8
+- [x] `website/content/docs/how-it-works/overview.mdx` — replace lines 12–32 with `<DocsSessionFlow />`; insert `<DocsParallelFetch />` after Turn 1 intro; insert `<DocsCompactionSurvival />` after compaction heading
+- [x] `website/content/docs/how-it-works/memory-types.mdx` — insert `<DocsMemoryTaxonomy />` between H1 and first H2; insert `<DocsAgingRules />` after "## Aging rules" heading
+- [x] `website/content/docs/how-it-works/extraction.mdx` — insert `<DocsExtractionPipeline />` between H1 and first H2; insert `<DocsDedupCosine />` inside "### 4. Deduplication"; insert `<DocsProviderSpeed />` after "## Extraction providers" intro
 
 **Success Criteria:**
 - `useMDXComponents` returns all 10 components by their exact export names
@@ -722,15 +722,15 @@ The 10s loop then repeats.
 **Goal**: Typecheck and build pass; PR created, CI passes, merged  
 **Duration**: 30 minutes  
 **Dependencies**: Phases 2 and 3 complete  
-**Status**: PENDING
+**Status**: DONE
 
 **Deliverables:**
-- [ ] `bun run typecheck` exits 0 in `website/`
-- [ ] `bun run build` exits 0 in `website/`
-- [ ] Git commit referencing issue #86
-- [ ] PR opened with labels `enhancement`, `frontend`, `documentation`, assignee `clarkbalan`
-- [ ] All CI checks pass
-- [ ] PR merged via squash bypass
+- [x] `bun run typecheck` exits 0 in `website/`
+- [x] `bun run build` exits 0 in `website/`
+- [x] Git commit referencing issue #86
+- [x] PR opened with labels `enhancement`, `frontend`, `documentation`, assignee `clarkbalan`
+- [x] All CI checks pass
+- [x] PR merged via squash bypass
 
 **Success Criteria:**
 - Zero TypeScript errors
