@@ -27,7 +27,7 @@
   </defs>
   <rect width="100%" height="100%" fill="#0d0d0d" />
 
-  <text x="450" y="118" fill="#777777" font-size="10" text-anchor="middle">All data stays on your machine at ~/.codexfi/</text>
+  <text x="450" y="125" fill="#777777" font-size="10" text-anchor="middle">All data stays on your machine at ~/.codexfi/</text>
 
   <!-- Arrows -->
   <path d="M 145 65 L 182 65" fill="none" stroke="#777777" opacity="0.5" stroke-width="1.5" marker-end="url(#arrow-hiw-dark)" class="arr" style="animation-delay: 0.1s;" />
@@ -38,9 +38,9 @@
   <!-- Node 1 -->
   <g class="node" style="animation-delay: 0s;">
     <rect x="15" y="45" width="130" height="40" rx="20" fill="#141414" stroke="#2a2a2a" stroke-width="1.5" />
-    <circle cx="28" cy="42" r="10" fill="#a855f7" opacity="0.15" />
-    <circle cx="28" cy="42" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
-    <text x="28" y="46" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">1</text>
+    <circle cx="80" cy="24" r="10" fill="#a855f7" opacity="0.15" />
+    <circle cx="80" cy="24" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
+    <text x="80" y="28" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">1</text>
     <text x="80" y="61" fill="#f0f0f0" font-size="13" font-weight="600" text-anchor="middle">You code</text>
     <text x="80" y="75" fill="#777777" font-size="10" text-anchor="middle">nothing to learn</text>
   </g>
@@ -48,9 +48,9 @@
   <!-- Node 2 -->
   <g class="node" style="animation-delay: 0.15s;">
     <rect x="187" y="45" width="130" height="40" rx="20" fill="#141414" stroke="#c084fc" stroke-width="1.5" />
-    <circle cx="200" cy="42" r="10" fill="#a855f7" opacity="0.15" />
-    <circle cx="200" cy="42" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
-    <text x="200" y="46" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">2</text>
+    <circle cx="252" cy="24" r="10" fill="#a855f7" opacity="0.15" />
+    <circle cx="252" cy="24" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
+    <text x="252" y="28" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">2</text>
     <text x="252" y="61" fill="#f0f0f0" font-size="13" font-weight="600" text-anchor="middle">Extract</text>
     <text x="252" y="75" fill="#777777" font-size="10" text-anchor="middle">after every turn</text>
   </g>
@@ -58,9 +58,9 @@
   <!-- Node 3 -->
   <g class="node" style="animation-delay: 0.3s;">
     <rect x="385" y="45" width="130" height="40" rx="20" fill="#141414" stroke="#a855f7" stroke-width="1.5" />
-    <circle cx="398" cy="42" r="10" fill="#a855f7" opacity="0.15" />
-    <circle cx="398" cy="42" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
-    <text x="398" y="46" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">3</text>
+    <circle cx="450" cy="24" r="10" fill="#a855f7" opacity="0.15" />
+    <circle cx="450" cy="24" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
+    <text x="450" y="28" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">3</text>
     <text x="450" y="61" fill="#f0f0f0" font-size="13" font-weight="600" text-anchor="middle">Store</text>
     <text x="450" y="75" fill="#777777" font-size="10" text-anchor="middle">LanceDB · local</text>
   </g>
@@ -68,9 +68,9 @@
   <!-- Node 4 -->
   <g class="node" style="animation-delay: 0.45s;">
     <rect x="583" y="45" width="130" height="40" rx="20" fill="#141414" stroke="#a855f7" stroke-width="1.5" />
-    <circle cx="596" cy="42" r="10" fill="#a855f7" opacity="0.15" />
-    <circle cx="596" cy="42" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
-    <text x="596" y="46" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">4</text>
+    <circle cx="648" cy="24" r="10" fill="#a855f7" opacity="0.15" />
+    <circle cx="648" cy="24" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
+    <text x="648" y="28" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">4</text>
     <text x="648" y="61" fill="#f0f0f0" font-size="13" font-weight="600" text-anchor="middle">Inject</text>
     <text x="648" y="75" fill="#777777" font-size="10" text-anchor="middle">[MEMORY] block</text>
   </g>
@@ -78,9 +78,9 @@
   <!-- Node 5 -->
   <g class="node glow" style="animation-delay: 0.6s; animation: fade-in 0.4s ease-out forwards, glowPulse-hiw 3s ease-in-out infinite alternate;">
     <rect x="750" y="43" width="140" height="44" rx="22" fill="#141414" stroke="#4ade80" stroke-width="1.5" filter="url(#glow-hiw-dark)" />
-    <circle cx="768" cy="42" r="10" fill="#a855f7" opacity="0.15" />
-    <circle cx="768" cy="42" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
-    <text x="768" y="46" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">5</text>
+    <circle cx="820" cy="24" r="10" fill="#a855f7" opacity="0.15" />
+    <circle cx="820" cy="24" r="10" fill="none" stroke="#a855f7" stroke-width="1" />
+    <text x="820" y="28" fill="#a855f7" font-size="10" font-weight="700" text-anchor="middle">5</text>
     <text x="820" y="61" fill="#4ade80" font-size="14" font-weight="700" text-anchor="middle">Remember</text>
     <text x="820" y="75" fill="#777777" font-size="10" text-anchor="middle">every session</text>
   </g>
