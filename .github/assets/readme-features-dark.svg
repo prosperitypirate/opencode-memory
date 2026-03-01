@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" width="100%" role="img" aria-label="codexfi Features: Local Storage, Automatic, Typed Memory, Multi-Provider, Compaction-Proof, Privacy Filter">
+  <title>codexfi Features</title>
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .mono { font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace; }
+      .card { opacity: 0; transform: translateY(8px); animation: fadeUp 0.5s ease-out forwards; }
+      .bar { transform: scaleY(0); transform-origin: top; animation: scaleY 0.5s ease-out forwards; }
+      .icon { opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
+      
+      @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+      @keyframes scaleY { to { transform: scaleY(1); } }
+      @keyframes fadeIn { to { opacity: 1; } }
+      
+      @media (prefers-reduced-motion: reduce) {
+        .card, .bar, .icon { animation: none !important; opacity: 1; transform: none; }
+      }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#0d0d0d" />
+  <g class="card" style="animation-delay: 0s;">
+    <rect x="10" y="10" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="10" y="10" width="3" height="82" rx="1.5" fill="#a855f7" class="bar" style="animation-delay: 0.1s;" />
+    <text x="32" y="48" fill="#a855f7" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.2s;">◉</text>
+    <text x="54" y="42" fill="#f0f0f0" font-size="12" font-weight="600">100% Local Storage</text>
+    <text x="54" y="60" fill="#777777" font-size="10">LanceDB embedded · ~/.codexfi/</text>
+  </g>
+  <g class="card" style="animation-delay: 0.08s;">
+    <rect x="298" y="10" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="298" y="10" width="3" height="82" rx="1.5" fill="#c084fc" class="bar" style="animation-delay: 0.18s;" />
+    <text x="320" y="48" fill="#c084fc" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.28s;">⚡</text>
+    <text x="342" y="42" fill="#f0f0f0" font-size="12" font-weight="600">Fully Automatic</text>
+    <text x="342" y="60" fill="#777777" font-size="10">saves after every turn · zero commands</text>
+  </g>
+  <g class="card" style="animation-delay: 0.16s;">
+    <rect x="586" y="10" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="586" y="10" width="3" height="82" rx="1.5" fill="#a855f7" class="bar" style="animation-delay: 0.26s;" />
+    <text x="608" y="48" fill="#a855f7" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.36s;">⬡</text>
+    <text x="630" y="42" fill="#f0f0f0" font-size="12" font-weight="600">Typed Memory</text>
+    <text x="630" y="60" fill="#777777" font-size="10">architecture · preference · error-solution</text>
+  </g>
+  <g class="card" style="animation-delay: 0.24s;">
+    <rect x="10" y="104" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="10" y="104" width="3" height="82" rx="1.5" fill="#c084fc" class="bar" style="animation-delay: 0.33999999999999997s;" />
+    <text x="32" y="142" fill="#c084fc" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.44s;">⇌</text>
+    <text x="54" y="136" fill="#f0f0f0" font-size="12" font-weight="600">Multi-Provider</text>
+    <text x="54" y="154" fill="#777777" font-size="10">Anthropic · xAI · Google</text>
+  </g>
+  <g class="card" style="animation-delay: 0.32s;">
+    <rect x="298" y="104" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="298" y="104" width="3" height="82" rx="1.5" fill="#c084fc" class="bar" style="animation-delay: 0.42000000000000004s;" />
+    <text x="320" y="142" fill="#c084fc" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.52s;">⊘</text>
+    <text x="342" y="136" fill="#f0f0f0" font-size="12" font-weight="600">Compaction-Proof</text>
+    <text x="342" y="154" fill="#777777" font-size="10">lives in system prompt · never lost</text>
+  </g>
+  <g class="card" style="animation-delay: 0.4s;">
+    <rect x="586" y="104" width="274" height="82" rx="10" fill="#141414" stroke="#2a2a2a" stroke-width="1" />
+    <rect x="586" y="104" width="3" height="82" rx="1.5" fill="#e879f9" class="bar" style="animation-delay: 0.5s;" />
+    <text x="608" y="142" fill="#e879f9" font-size="18" text-anchor="middle" class="icon" style="animation-delay: 0.6000000000000001s;">◌</text>
+    <text x="630" y="136" fill="#f0f0f0" font-size="12" font-weight="600">Privacy Filter</text>
+    <text x="630" y="154" fill="#777777" font-size="10"><private>...</private> excluded entirely</text>
+  </g></svg>

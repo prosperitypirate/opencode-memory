@@ -4,7 +4,7 @@
 
 **Persistent memory for [OpenCode](https://opencode.ai) AI agents.**
 
-> *The best memory system is the one that just works. No Docker. No Python. No frontend servers. Just `bunx codexfi install` and you're done.*
+> *The best memory system is the one that just works. No Docker. No Python. No frontend servers. Just `curl -fsSL https://codexfi.com/install | bash` and you're done.*
 
 <br/>
 
@@ -19,11 +19,10 @@
 [![Google](https://img.shields.io/badge/Google-Gemini-4285F4?style=flat&logo=google&logoColor=white)](https://ai.google.dev/)
 [![OpenCode](https://img.shields.io/badge/OpenCode-Plugin-FF6B35?style=flat)](https://opencode.ai)
 
-</div>
-
-<div align="center">
-
-![codexfi dashboard](.github/assets/dashboard.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme-hero-dark.svg">
+  <img src=".github/assets/readme-hero-light.svg" alt="codexfi memory loop — conversation to memory and back" width="100%">
+</picture>
 
 </div>
 
@@ -40,7 +39,7 @@ OpenCode starts every session from scratch. No memory of past decisions, establi
 ## Install
 
 ```bash
-bunx codexfi install
+curl -fsSL https://codexfi.com/install | bash
 ```
 
 The installer prompts for API keys, registers the plugin, and you're done. Start any OpenCode session and you'll see a `[MEMORY]` block confirming it's active.
@@ -56,6 +55,12 @@ The installer prompts for API keys, registers the plugin, and you're done. Start
 
 ## How it works
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme-how-it-works-dark.svg">
+  <img src=".github/assets/readme-how-it-works-light.svg" alt="5-step pipeline: You code → Extract → Store → Inject → Remember" width="100%">
+</picture>
+
+
 1. **You code normally.** No commands, no `/save`, nothing to learn.
 2. **After every turn**, the plugin extracts typed facts from the conversation and stores them locally in LanceDB.
 3. **On every LLM call**, a `[MEMORY]` block is rebuilt into the system prompt with project context, preferences, and semantically relevant memories.
@@ -67,6 +72,12 @@ All data stays on your machine at `~/.codexfi/`. Nothing is sent anywhere except
 ---
 
 ## Features
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme-features-dark.svg">
+  <img src=".github/assets/readme-features-light.svg" alt="codexfi Features: Local Storage, Automatic, Typed Memory, Multi-Provider, Compaction-Proof, Privacy Filter" width="100%">
+</picture>
+
 
 - **Fully automatic** — saves after every turn, injects on every call
 - **100% local storage** — LanceDB embedded in-process
@@ -113,6 +124,12 @@ All data stays on your machine. Outbound API calls go only to Voyage AI (embeddi
 ---
 
 ## More
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme-benchmark-dark.svg">
+  <img src=".github/assets/readme-benchmark-light.svg" alt="Benchmark: 94.5% Overall" width="100%">
+</picture>
+
 
 - **[Plugin internals](./plugin/README.md)** — architecture, data flow, extraction providers, development setup
 - **[Benchmark](./benchmark/README.md)** — 94.5% on DevMemBench (200 questions, 8 categories)
