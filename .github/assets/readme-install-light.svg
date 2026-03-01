@@ -45,7 +45,7 @@
   <text x="28" y="54" fill="#16a34a" font-size="13">$</text>
   <text x="48" y="54" fill="#111111" font-size="13" font-weight="500" clip-path="url(#type-clip-ins-light)">curl -fsSL https://codexfi.com/install | bash</text>
   
-  <rect x="385" y="42" width="8" height="14" fill="#7c3aed" class="blink cursor" />
+  <rect x="408" y="42" width="8" height="14" fill="#7c3aed" class="blink cursor" />
 
   <!-- Output -->
   <text x="28" y="74" fill="#16a34a" font-size="11" class="out1">  ✓ Voyage AI key saved</text>
