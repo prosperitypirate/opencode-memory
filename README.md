@@ -42,12 +42,6 @@ OpenCode starts every session from scratch. No memory of past decisions, establi
 curl -fsSL https://codexfi.com/install | bash
 ```
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme-install-dark.svg">
-  <img src=".github/assets/readme-install-light.svg" alt="Terminal command: curl -fsSL https://codexfi.com/install | bash" width="100%">
-</picture>
-
-
 The installer prompts for API keys, registers the plugin, and you're done. Start any OpenCode session and you'll see a `[MEMORY]` block confirming it's active.
 
 ### Prerequisites
