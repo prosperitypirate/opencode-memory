@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" width="100%" role="img" aria-label="codexfi memory loop — conversation to memory and back">
+  <title>codexfi Memory Loop</title>
+  <defs>
+    <linearGradient id="flow-grad-light" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#9333ea" />
+    </linearGradient>
+    <filter id="glow-hero-light">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <marker id="arrow-light" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9333ea" />
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .mono { font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace; }
+      .node { opacity: 0; animation: fade-in 0.5s ease-out forwards; }
+      .tag { opacity: 0; transform: translateX(150px); animation: slideTag 8s linear infinite; }
+      
+      @keyframes fade-in { to { opacity: 1; } }
+      @keyframes dashFlow-hero { to { stroke-dashoffset: -13; } }
+      @keyframes dashFlowRev-hero { to { stroke-dashoffset: 16; } }
+      @keyframes glowPulse-hero { from { filter: url(#glow-hero-light); opacity: 0.8; } to { filter: url(#glow-hero-light); opacity: 1; } }
+      @keyframes slideTag {
+        0% { transform: translateX(150px); opacity: 0; }
+        5% { opacity: 1; }
+        90% { transform: translateX(800px); opacity: 1; }
+        95% { opacity: 0; transform: translateX(820px); }
+        100% { opacity: 0; }
+      }
+      
+      @media (prefers-reduced-motion: reduce) {
+        .node { opacity: 1; animation: none !important; }
+        .tag { animation: none !important; opacity: 1; }
+        .path { animation: none !important; }
+        .glow { animation: none !important; }
+        .tag-1 { transform: translateX(240px); }
+        .tag-2 { transform: translateX(450px); }
+        .tag-3 { transform: translateX(660px); }
+      }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <text x="450" y="28" fill="#6b7280" font-size="13" letter-spacing="3" text-anchor="middle" class="mono">codexfi</text>
+
+  <!-- Return Arc -->
+  <path d="M 852 110 A 20 20 0 0 1 852 130 L 852 170 A 20 20 0 0 1 832 190 L 67 190 A 20 20 0 0 1 47 170 L 47 130 A 20 20 0 0 1 47 110" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="10 6" opacity="0.45" class="path" style="animation: dashFlowRev-hero 2s linear infinite;" />
+
+  <!-- Connecting Arrows -->
+  <path d="M 177 110 L 267 110" fill="none" stroke="url(#flow-grad-light)" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow-light)" class="path" style="animation: dashFlow-hero 1.4s linear infinite;" />
+  <path d="M 402 110 L 492 110" fill="none" stroke="url(#flow-grad-light)" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow-light)" class="path" style="animation: dashFlow-hero 1.4s linear infinite;" />
+  <path d="M 627 110 L 717 110" fill="none" stroke="url(#flow-grad-light)" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow-light)" class="path" style="animation: dashFlow-hero 1.4s linear infinite;" />
+
+  <!-- Tags -->
+  <g class="tag tag-1" style="animation-delay: 0s;">
+    <rect y="99" width="100" height="22" rx="11" fill="#f9fafb" stroke="#7c3aed" stroke-width="1" />
+    <text x="50" y="114" fill="#111111" font-size="10" text-anchor="middle" class="mono">architecture</text>
+  </g>
+  <g class="tag tag-2" style="animation-delay: 2.7s;">
+    <rect y="99" width="80" height="22" rx="11" fill="#f9fafb" stroke="#c026d3" stroke-width="1" />
+    <text x="40" y="114" fill="#111111" font-size="10" text-anchor="middle" class="mono">preference</text>
+  </g>
+  <g class="tag tag-3" style="animation-delay: 5.4s;">
+    <rect y="99" width="100" height="22" rx="11" fill="#f9fafb" stroke="#9333ea" stroke-width="1" />
+    <text x="50" y="114" fill="#111111" font-size="10" text-anchor="middle" class="mono">error-solution</text>
+  </g>
+
+  <!-- Node 1 -->
+  <g class="node" style="animation-delay: 0s;">
+    <rect x="47" y="88" width="130" height="44" rx="22" fill="#f9fafb" stroke="#7c3aed" stroke-width="1.5" />
+    <text x="112" y="106" fill="#111111" font-size="13" font-weight="600" text-anchor="middle">Conversation</text>
+    <text x="112" y="122" fill="#6b7280" font-size="10" text-anchor="middle">your session</text>
+  </g>
+
+  <!-- Node 2 -->
+  <g class="node" style="animation-delay: 0.1s;">
+    <rect x="272" y="88" width="130" height="44" rx="22" fill="#f9fafb" stroke="#9333ea" stroke-width="1.5" />
+    <text x="337" y="106" fill="#111111" font-size="13" font-weight="600" text-anchor="middle">Extract → Embed</text>
+    <text x="337" y="122" fill="#6b7280" font-size="10" text-anchor="middle">Haiku · Grok · Gemini</text>
+  </g>
+
+  <!-- Node 3 -->
+  <g class="node" style="animation-delay: 0.2s;">
+    <rect x="497" y="88" width="130" height="44" rx="22" fill="#f9fafb" stroke="#9333ea" stroke-width="1.5" />
+    <text x="562" y="106" fill="#111111" font-size="13" font-weight="600" text-anchor="middle">LanceDB</text>
+    <text x="562" y="122" fill="#6b7280" font-size="10" text-anchor="middle">~/.codexfi/ · local</text>
+  </g>
+
+  <!-- Node 4 -->
+  <g class="node glow" style="animation-delay: 0.3s; animation: fade-in 0.5s ease-out forwards, glowPulse-hero 2.5s ease-in-out infinite alternate;">
+    <rect x="722" y="88" width="130" height="44" rx="22" fill="#f9fafb" stroke="#16a34a" stroke-width="1.5" filter="url(#glow-hero-light)" />
+    <text x="787" y="106" fill="#16a34a" font-size="13" font-weight="700" text-anchor="middle" class="mono">[MEMORY]</text>
+    <text x="787" y="122" fill="#6b7280" font-size="10" text-anchor="middle">injected on every call</text>
+  </g>
+</svg>
