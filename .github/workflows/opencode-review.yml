@@ -1,12 +1,7 @@
 name: opencode-review
 
 on:
-  # pull_request_target runs in the context of the base branch (main), so
-  # GITHUB_TOKEN has write permission regardless of who opened the PR.
-  # This is required for Dependabot PRs, where pull_request gives permission: none.
-  # Safe here because: (1) this is a private org repo — forks can't open PRs
-  # without collaborator access, and (2) the workflow never checks out PR code.
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
   # issue_comment / pull_request_review_comment triggers are disabled —
@@ -21,8 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # Only run on non-draft PRs
-    if: github.event.pull_request.draft == false
+    # Skip Dependabot PRs (permission: none on pull_request trigger) and drafts.
+    # Dependabot bumps are reviewed via CI and human approval — no AI review needed.
+    if: github.actor != 'dependabot[bot]' && github.event.pull_request.draft == false
 
     permissions:
       id-token: write
