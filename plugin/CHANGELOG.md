@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/prosperitypirate/codexfi/compare/v0.4.5...v0.4.6) (2026-03-04)
+
+
+### Bug Fixes
+
+* **memory:** add project-config to extraction prompts and tighten tech-context boundary ([#107](https://github.com/prosperitypirate/codexfi/issues/107)) ([3faafb6](https://github.com/prosperitypirate/codexfi/commit/3faafb6270f9243cafc23b10d494cf0455a2df23))
+
 ## [0.4.5](https://github.com/prosperitypirate/codexfi/compare/v0.4.4...v0.4.5) (2026-03-03)
 
 
