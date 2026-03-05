@@ -21,7 +21,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { buildDisabledWarning } from "../../../plugin/src/index.js";
+import { buildDisabledWarning } from "../../../plugin/src/services/disabled-warning.js";
 
 // ── Output format ────────────────────────────────────────────────────────────────
 
