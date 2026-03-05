@@ -128,7 +128,7 @@ function checkDatabase(): CheckResult {
 	}
 }
 
-function checkConfigFile(): CheckResult {
+export function checkConfigFile(): CheckResult {
 	const name = "Config file";
 	const candidates = [
 		join(CONFIG_DIR, "codexfi.jsonc"),

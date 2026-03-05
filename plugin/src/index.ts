@@ -218,7 +218,7 @@ function detectMemoryKeyword(text: string): boolean {
 
 // ── Disabled warning (injected into system prompt when plugin is not configured) ──
 
-function buildDisabledWarning(): string {
+export function buildDisabledWarning(): string {
 	const keyStatus = (key: string, value: string) =>
 		value ? `  ✓ ${key.padEnd(20)} set` : `  ✗ ${key.padEnd(20)} MISSING`;
 
