@@ -30,13 +30,6 @@ import {
 } from "./services/auto-save.js";
 
 import { isConfigured, PLUGIN_CONFIG } from "./plugin-config.js";
-import {
-	VOYAGE_API_KEY,
-	ANTHROPIC_API_KEY,
-	XAI_API_KEY,
-	GOOGLE_API_KEY,
-	EXTRACTION_PROVIDER,
-} from "./config.js";
 import { log } from "./services/logger.js";
 import type { MemoryScope, MemoryType } from "./types/index.js";
 
@@ -220,7 +213,8 @@ function detectMemoryKeyword(text: string): boolean {
 // Defined in its own module (services/disabled-warning.ts) so it can be unit-tested
 // without importing this file's heavy native dependencies (@lancedb/lancedb etc.)
 
-export { buildDisabledWarning } from "./services/disabled-warning.js";
+import { buildDisabledWarning } from "./services/disabled-warning.js";
+export { buildDisabledWarning };
 
 // ── Per-session memory cache ────────────────────────────────────────────────────
 
