@@ -16,6 +16,15 @@ export const TREE_IGNORE = new Set([
 	".svelte-kit", ".output", ".vercel", ".netlify",
 ]);
 
+/**
+ * Generates a text-based directory tree of the given directory.
+ * Excludes build artifacts, dependencies, and VCS directories listed in TREE_IGNORE.
+ * Includes `.github/` as the sole dotfile exception. Sorts directories before files.
+ *
+ * @param rootDir - The root directory to traverse
+ * @param maxDepth - Maximum recursion depth (typically 3)
+ * @returns A string representation with tree connectors (├──, └──), root line ending with /
+ */
 export function generateDirectoryTree(rootDir: string, maxDepth: number): string {
 	const lines: string[] = [];
 

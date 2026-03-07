@@ -135,8 +135,10 @@ async function triggerSilentAutoInit(
 				sections.push(`=== git log (recent) ===\n${truncatedLog}`);
 				totalChars += truncatedLog.length;
 			}
-		} catch {
-			// Not a git repo or git not available — silently skip
+		} catch (err) {
+			log("auto-init: git log skipped", {
+				reason: err instanceof Error ? err.message : String(err),
+			});
 		}
 	}
 
@@ -681,49 +683,49 @@ export const MemoryPlugin: Plugin = async (ctx: PluginInput) => {
 
 				if (isFirstMessage) {
 					// ── Turn 1: Full memory fetch + cache population ────────────
-				const [profileResult, userSearch, projectMemoriesList, initialProjectSearch] = await Promise.all([
-					getProfile(tags.user),
-					searchMemories(userMessage, tags.user, 0.1),
-					listMemories(tags.project, PLUGIN_CONFIG.maxStructuredMemories),
-					searchMemories(userMessage, tags.project, 0.15),
-				]);
+					const [profileResult, userSearch, projectMemoriesList, initialProjectSearch] = await Promise.all([
+						getProfile(tags.user),
+						searchMemories(userMessage, tags.user, 0.1),
+						listMemories(tags.project, PLUGIN_CONFIG.maxStructuredMemories),
+						searchMemories(userMessage, tags.project, 0.15),
+					]);
 
-				const profile = profileResult.success ? profileResult : null;
-				let allProjectMemories = projectMemoriesList.success
-					? projectMemoriesList.memories
-					: [];
+					const profile = profileResult.success ? profileResult : null;
+					let allProjectMemories = projectMemoriesList.success
+						? projectMemoriesList.memories
+						: [];
 
-				let projectSearchFinal = initialProjectSearch;
+					let projectSearchFinal = initialProjectSearch;
 
-				// ── Auto-init: no project memory yet ────────────────────────
-				if (allProjectMemories.length === 0) {
-					if (detectExistingCodebase(directory)) {
-						await triggerSilentAutoInit(directory, tags).catch(
-							(err) => log("auto-init: failed", { error: String(err) })
-						);
+					// ── Auto-init: no project memory yet ────────────────────────
+					if (allProjectMemories.length === 0) {
+						if (detectExistingCodebase(directory)) {
+							await triggerSilentAutoInit(directory, tags).catch(
+								(err) => log("auto-init: failed", { error: String(err) })
+							);
 
-						// Re-fetch freshly-written memories so Turn 1 sees them
-						const [freshList, freshSearch] = await Promise.all([
-							listMemories(tags.project, PLUGIN_CONFIG.maxStructuredMemories),
-							searchMemories(userMessage, tags.project, 0.15),
-						]);
+							// Re-fetch freshly-written memories so Turn 1 sees them
+							const [freshList, freshSearch] = await Promise.all([
+								listMemories(tags.project, PLUGIN_CONFIG.maxStructuredMemories),
+								searchMemories(userMessage, tags.project, 0.15),
+							]);
 
-						if (freshList.success && freshList.memories.length > 0) {
-							allProjectMemories = freshList.memories;
-							log("auto-init: re-fetched memories for Turn 1", {
-								count: allProjectMemories.length,
-							});
+							if (freshList.success && freshList.memories.length > 0) {
+								allProjectMemories = freshList.memories;
+								log("auto-init: re-fetched memories for Turn 1", {
+									count: allProjectMemories.length,
+								});
+							}
+
+							// Update project semantic results with fresh search
+							if (freshSearch.results) {
+								projectSearchFinal = freshSearch;
+							}
+						} else {
+							// Fresh project — no files to init from
+							freshProjectSessions.add(input.sessionID);
 						}
-
-					// Update project semantic results with fresh search
-					if (freshSearch.results) {
-						projectSearchFinal = freshSearch;
 					}
-					} else {
-						// Fresh project — no files to init from
-						freshProjectSessions.add(input.sessionID);
-					}
-				}
 
 					// ── Partition project memories by type ──────────────────────
 					const byType: Record<string, StructuredMemory[]> = {};

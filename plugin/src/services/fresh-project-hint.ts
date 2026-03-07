@@ -5,6 +5,13 @@
  * Pattern follows disabled-warning.ts:17-49.
  */
 
+/**
+ * Builds the system prompt hint for new/empty project directories.
+ * Injected once on Turn 1 when no codebase is detected and no project memories exist.
+ *
+ * @param directory - The working directory path (project name extracted from last segment)
+ * @returns A multi-line string starting with `[MEMORY - NEW PROJECT]`
+ */
 export function buildFreshProjectHint(directory: string): string {
 	const projectName = directory.split("/").pop() ?? "this directory";
 	return `[MEMORY - NEW PROJECT]
