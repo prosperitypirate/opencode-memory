@@ -35,6 +35,7 @@ import { homedir } from "node:os";
 import type { ParsedArgs } from "../args.js";
 import { getFlag } from "../args.js";
 import * as fmt from "../fmt.js";
+import { VALID_PROVIDERS, EXTRACTION_PROVIDER } from "../../config.js";
 import {
 	PLUGIN_CONFIG,
 	getConfigPath,
@@ -407,13 +408,38 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 	// ── Extraction provider selection ──────────────────────────────────────────
 	const providerFromFlag = getFlag(args, "provider");
 	const providerFromConfig = PLUGIN_CONFIG.extractionProvider;
-	const VALID_PROVIDERS = new Set(["anthropic", "xai", "google"]);
+
+	/** Display provider choices with key-availability and active-provider markers. */
+	function showProviderChoices(): void {
+		fmt.info("Choose extraction provider:");
+		for (const p of PROVIDERS) {
+			const hasKey = !!(keys[p.configKey] || PLUGIN_CONFIG[p.configKey]);
+			const active = p.key === EXTRACTION_PROVIDER ? fmt.dim(" [active]") : "";
+			const keyStatus = hasKey ? fmt.dim(" (key set)") : fmt.dim(" (no key)");
+			console.log(`    ${fmt.cyan(p.key.padEnd(12))} ${p.label}${keyStatus}${active}`);
+		}
+	}
+
+	/** Prompt user to pick a provider and return the selection. */
+	async function promptProviderChoice(): Promise<ApiKeyUpdate["extractionProvider"]> {
+		fmt.blank();
+		showProviderChoices();
+		fmt.blank();
+		const choice = await ask(`  Provider ${fmt.dim("[anthropic/xai/google]")}: `);
+		if (choice && VALID_PROVIDERS.has(choice)) {
+			fmt.success(`Extraction provider: ${fmt.cyan(choice)}`);
+			return choice as ApiKeyUpdate["extractionProvider"];
+		}
+		fmt.info(`Defaulting to ${fmt.cyan("anthropic")}`);
+		return "anthropic";
+	}
 
 	if (providerFromFlag && VALID_PROVIDERS.has(providerFromFlag)) {
 		keys.extractionProvider = providerFromFlag as ApiKeyUpdate["extractionProvider"];
 		fmt.success(`Extraction provider: ${fmt.cyan(providerFromFlag)} ${fmt.dim("[flag]")}`);
 	} else if (providerFromFlag) {
-		fmt.warn(`Invalid provider "${providerFromFlag}" — must be one of: anthropic, xai, google`);
+		fmt.warn(`Invalid --provider "${providerFromFlag}" — valid options: anthropic, xai, google.`);
+		fmt.info("Falling back to interactive selection.");
 	}
 
 	if (!keys.extractionProvider) {
@@ -427,42 +453,10 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 				keys.extractionProvider = providerFromConfig;
 				fmt.success(`Extraction provider: ${fmt.cyan(providerFromConfig)}`);
 			} else {
-				// Prompt for new choice
-				fmt.blank();
-				fmt.info("Choose extraction provider:");
-				for (const p of PROVIDERS) {
-					const hasKey = !!(keys[p.configKey] || PLUGIN_CONFIG[p.configKey]);
-					const marker = hasKey ? fmt.dim(" (key set)") : fmt.dim(" (no key)");
-					console.log(`    ${fmt.cyan(p.key.padEnd(12))} ${p.label}${marker}`);
-				}
-				fmt.blank();
-				const choice = await ask(`  Provider ${fmt.dim("[anthropic/xai/google]")}: `);
-				if (choice && VALID_PROVIDERS.has(choice)) {
-					keys.extractionProvider = choice as ApiKeyUpdate["extractionProvider"];
-					fmt.success(`Extraction provider: ${fmt.cyan(choice)}`);
-				} else {
-					keys.extractionProvider = "anthropic";
-					fmt.info(`Defaulting to ${fmt.cyan("anthropic")}`);
-				}
+				keys.extractionProvider = await promptProviderChoice();
 			}
 		} else {
-			// Not configured yet — prompt
-			fmt.blank();
-			fmt.info("Choose extraction provider:");
-			for (const p of PROVIDERS) {
-				const hasKey = !!(keys[p.configKey] || PLUGIN_CONFIG[p.configKey]);
-				const marker = hasKey ? fmt.dim(" (key set)") : fmt.dim(" (no key)");
-				console.log(`    ${fmt.cyan(p.key.padEnd(12))} ${p.label}${marker}`);
-			}
-			fmt.blank();
-			const choice = await ask(`  Provider ${fmt.dim("[anthropic/xai/google]")}: `);
-			if (choice && VALID_PROVIDERS.has(choice)) {
-				keys.extractionProvider = choice as ApiKeyUpdate["extractionProvider"];
-				fmt.success(`Extraction provider: ${fmt.cyan(choice)}`);
-			} else {
-				keys.extractionProvider = "anthropic";
-				fmt.info(`Defaulting to ${fmt.cyan("anthropic")}`);
-			}
+			keys.extractionProvider = await promptProviderChoice();
 		}
 	}
 

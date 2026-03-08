@@ -58,7 +58,7 @@ export const DATA_DIR = process.env.CODEXFI_DATA_DIR ?? process.env.OPENCODE_MEM
 
 export type ExtractionProvider = "anthropic" | "xai" | "google";
 
-const VALID_PROVIDERS = new Set<string>(["anthropic", "xai", "google"]);
+export const VALID_PROVIDERS = new Set<string>(["anthropic", "xai", "google"]);
 
 /**
  * Provider resolution order:
