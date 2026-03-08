@@ -454,6 +454,7 @@ async function resolveApiKeys(args: ParsedArgs): Promise<ApiKeyUpdate> {
 			const keep = await ask(`  Keep this? ${fmt.dim("[Y/n]")}: `);
 
 			if (!keep || keep.toLowerCase() === "y" || keep.toLowerCase() === "yes") {
+				// Preserve existing choice from config — no change requested by user
 				keys.extractionProvider = providerFromConfig;
 				fmt.success(`Extraction provider: ${fmt.cyan(providerFromConfig)}`);
 			} else {

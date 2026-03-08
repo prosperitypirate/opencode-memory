@@ -323,6 +323,6 @@ describe("writeApiKeys with extractionProvider", () => {
 		expect(content).toContain("pa-preserve-2");
 		// The config merges existing values — extractionProvider from the file
 		// gets preserved through the loadConfig() → merge path in writeApiKeys()
-		expect(content).toContain('"extractionProvider"');
+		expect(content).toContain('"extractionProvider": "xai"');
 	});
 });
